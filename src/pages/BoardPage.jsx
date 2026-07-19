@@ -70,6 +70,7 @@ export function BoardPage({ user }) {
   const [selectedTask, setSelectedTask] = useState(null);
   const [memberUsers, setMemberUsers] = useState([]);
   const [canManage, setCanManage] = useState(false);
+  const [canCreateTasks, setCanCreateTasks] = useState(false);
   const [loading, setLoading] = useState(true);
   const [overviewItems, setOverviewItems] = useState([]);
   const [overviewTotal, setOverviewTotal] = useState(0);
@@ -162,6 +163,7 @@ export function BoardPage({ user }) {
           (projectData.members || []).filter((member) => Boolean(member.is_staff)),
         );
         setCanManage(Boolean(projectData.permissions?.canManage));
+        setCanCreateTasks(Boolean(projectData.permissions?.canCreateTasks));
       })
       .catch((error) => {
         if (active) message.error(error.message);
@@ -310,6 +312,7 @@ export function BoardPage({ user }) {
       setTasks([]);
       setMemberUsers([]);
       setCanManage(false);
+      setCanCreateTasks(false);
       setLoading(true);
       setMode("project");
       setProjectId(item.id);
@@ -525,7 +528,7 @@ export function BoardPage({ user }) {
             <Button icon={<ArrowLeftOutlined />} onClick={() => setView("overview")}>
               กลับหน้ารวม
             </Button>
-            {mode === "project" && canManage ? (
+            {mode === "project" && canCreateTasks ? (
               <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)} disabled={!projectId}>
                 เพิ่มงาน
               </Button>

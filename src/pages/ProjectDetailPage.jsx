@@ -778,7 +778,7 @@ export function ProjectDetailPage({ session }) {
     && hasPermission(session.user, "projects.members.manage");
   const canUpdateStatus = canManage
     && hasPermission(session.user, "projects.status.update");
-  const canCreateTask = canManage
+  const canCreateTask = Boolean(permissions.canCreateTasks)
     && hasPermission(session.user, "tasks.create");
   const canEditPlans = Boolean(permissions.canEditPlans)
     && hasPermission(session.user, "projects.plan.manage");

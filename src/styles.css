@@ -1,0 +1,205 @@
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap");
+@import "../node_modules/frappe-gantt/dist/frappe-gantt.css";
+@import "tailwindcss";
+
+:root {
+  font-family: "Noto Sans Thai", "Segoe UI", system-ui, sans-serif;
+  color: #1f2937;
+  background: #f3f5f9;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: #f3f5f9;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.ant-menu-inline .ant-menu-item {
+  width: 100% !important;
+  margin-inline: 0 !important;
+  border-radius: 10px !important;
+}
+
+.ant-menu-inline .ant-menu-item-selected {
+  background: #fef2f2 !important;
+  color: #b91c1c !important;
+  font-weight: 600;
+}
+
+.app-sidebar .ant-menu-dark .ant-menu-item {
+  color: #cbd5e1 !important;
+}
+
+.app-sidebar .ant-menu-dark .ant-menu-item:hover {
+  background: rgb(255 255 255 / 0.07) !important;
+  color: #ffffff !important;
+}
+
+.app-sidebar .ant-menu-dark .ant-menu-item-selected {
+  background: rgb(185 28 28 / 0.28) !important;
+  color: #ffffff !important;
+  box-shadow: inset 3px 0 0 #ef4444;
+}
+
+.kanban-column {
+  min-height: 480px;
+  background: #eef1f6 !important;
+}
+
+.kanban-column .ant-card-head {
+  min-height: 44px;
+  padding: 0 12px;
+  border-bottom: none;
+  background: transparent;
+}
+
+.kanban-column .ant-card-body {
+  padding: 8px 12px 12px;
+}
+
+.task-card-draggable {
+  cursor: grab;
+}
+
+.task-card-draggable:active {
+  cursor: grabbing;
+}
+
+.issue-row:hover {
+  background: #f8fafc;
+}
+
+.project-plan-gantt {
+  --g-header-background: #f8fafc;
+  --g-row-color: #ffffff;
+  --g-row-border-color: #e2e8f0;
+  --g-tick-color: #e2e8f0;
+  --g-tick-color-thick: #cbd5e1;
+  --g-weekend-highlight-color: #f1f5f9;
+  --g-text-dark: #0f172a;
+  --g-text-muted: #64748b;
+  --g-bar-color: #cbd5e1;
+  --g-bar-border: #94a3b8;
+  --g-progress-color: #94a3b8;
+  width: 100%;
+  padding: 0 0 8px;
+}
+
+.project-plan-gantt .gantt-container {
+  width: 100% !important;
+  max-height: none !important;
+  min-height: 180px !important;
+  border-radius: 0;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  font-family: "Noto Sans Thai", "Segoe UI", system-ui, sans-serif;
+}
+
+/* ใช้ความกว้างจริงของ SVG ตามจำนวนวัน ห้ามยืดแล้วเพี้ยน */
+.project-plan-gantt .gantt-container svg.gantt {
+  display: block;
+  width: auto !important;
+  max-width: none !important;
+}
+
+.project-plan-gantt .lower-text {
+  font-size: 13px !important;
+  font-weight: 600;
+}
+
+.project-plan-gantt .upper-text {
+  font-size: 15px !important;
+}
+
+.project-plan-gantt .bar-wrapper .bar {
+  stroke-width: 1px;
+  fill: #cbd5e1 !important;
+  stroke: #94a3b8 !important;
+}
+
+.project-plan-gantt .bar-wrapper .bar-progress {
+  fill: #94a3b8 !important;
+}
+
+.project-plan-gantt .bar-wrapper.project-plan-planned .bar {
+  fill: #cbd5e1 !important;
+  stroke: #94a3b8 !important;
+}
+
+.project-plan-gantt .bar-wrapper.project-plan-planned .bar-progress {
+  fill: #94a3b8 !important;
+}
+
+.project-plan-gantt .bar-wrapper.project-plan-in_progress .bar {
+  fill: #fecaca !important;
+  stroke: #dc2626 !important;
+}
+
+.project-plan-gantt .bar-wrapper.project-plan-in_progress .bar-progress {
+  fill: #dc2626 !important;
+}
+
+.project-plan-gantt .bar-wrapper.project-plan-done .bar {
+  fill: #bbf7d0 !important;
+  stroke: #22c55e !important;
+}
+
+.project-plan-gantt .bar-wrapper.project-plan-done .bar-progress {
+  fill: #22c55e !important;
+}
+
+.project-plan-gantt .bar-label {
+  font-family: "Noto Sans Thai", "Segoe UI", system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  fill: #0f172a !important;
+  pointer-events: none;
+}
+
+.project-plan-gantt .bar-assignee-label {
+  font-family: "Noto Sans Thai", "Segoe UI", system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  fill: #b91c1c !important;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+.project-plan-side {
+  box-shadow: 4px 0 12px -8px rgba(15, 23, 42, 0.25);
+}
+
+.project-plan-popup-hint {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.project-plan-gantt .popup-wrapper {
+  min-width: 260px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.project-plan-gantt .popup-wrapper .action-btn {
+  cursor: pointer;
+  border-radius: 7px !important;
+  background: #b91c1c;
+  color: #ffffff;
+  font-family: "Noto Sans Thai", "Segoe UI", system-ui, sans-serif;
+}
+
+.project-plan-popup-dates {
+  margin-top: 7px;
+  font-weight: 600;
+  color: #475569;
+}

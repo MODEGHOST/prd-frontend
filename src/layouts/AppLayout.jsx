@@ -17,7 +17,7 @@ import {
   ProjectOutlined,
   SafetyCertificateOutlined,
 } from "@ant-design/icons";
-import { NAV_ITEMS, ROLE_LABELS } from "../constants";
+import { APP_VERSION, NAV_ITEMS, ROLE_LABELS } from "../constants";
 import { NotificationCenter } from "../components/notifications/NotificationCenter";
 import { hasPermission, isRequesterPersona } from "../utils/access";
 
@@ -48,7 +48,10 @@ function SidebarContent({ session, selectedKey, menuItems, onLogout, showBrandTe
               <br />
               Management System
             </div>
-            <div className="mt-1 text-[10px] tracking-[0.08em] text-red-300">LEE FIBREBOARD</div>
+            <div className="mt-1 flex items-center gap-2 text-[10px] tracking-[0.08em] text-red-300">
+              <span>LEE FIBREBOARD</span>
+              <span className="tracking-normal text-slate-500">v{APP_VERSION}</span>
+            </div>
           </div>
         ) : null}
       </div>
@@ -223,7 +226,7 @@ export function AppLayout({
             {(session.companies || []).length > 1 ? (
               <Select
                 size="small"
-                className="hidden min-w-44 sm:block"
+                className="min-w-36 max-w-44 sm:min-w-44"
                 value={session.user.companyId}
                 loading={switchingCompany}
                 options={(session.companies || []).map((company) => ({

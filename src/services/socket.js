@@ -1,25 +1,23 @@
 import { io } from "socket.io-client";
 
 let socket = null;
-let authToken = null;
 const roomRefs = new Map();
 
 function socketUrl() {
+  // Prefer same-origin (Vite proxy / production reverse proxy) so httpOnly cookies are sent.
   if (import.meta.env.VITE_SOCKET_URL) return import.meta.env.VITE_SOCKET_URL;
-  // Dev: connect to API directly so notifications aren't lost via proxy flakes
-  if (import.meta.env.DEV) return "http://localhost:4000";
   return undefined;
 }
 
 function ensureJoin(s) {
-  if (!s || !authToken) return;
-  s.emit("join", authToken);
+  if (!s) return;
+  s.emit("join", {});
   for (const key of roomRefs.keys()) {
     const [kind, id] = key.split(":");
     if (kind === "project") {
-      s.emit("joinProject", { token: authToken, projectId: Number(id) });
+      s.emit("joinProject", { projectId: Number(id) });
     } else if (kind === "issue") {
-      s.emit("joinIssue", { token: authToken, issueId: Number(id) });
+      s.emit("joinIssue", { issueId: Number(id) });
     }
   }
 }
@@ -29,6 +27,7 @@ export function getSocket() {
     socket = io(socketUrl(), {
       path: "/socket.io",
       transports: ["websocket", "polling"],
+      withCredentials: true,
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
@@ -44,8 +43,7 @@ export function getSocket() {
   return socket;
 }
 
-export function connectSocket(token) {
-  authToken = token;
+export function connectSocket() {
   const s = getSocket();
   if (!s.connected) {
     s.connect();
@@ -58,7 +56,6 @@ export function connectSocket(token) {
 export function disconnectSocket() {
   if (!socket) return;
   roomRefs.clear();
-  authToken = null;
   const s = socket;
   socket = null;
   s.removeAllListeners();
@@ -69,15 +66,16 @@ function roomKey(kind, id) {
   return `${kind}:${id}`;
 }
 
-export function joinProjectRoom(token, projectId) {
+export function joinProjectRoom(_tokenOrProjectId, maybeProjectId) {
+  // Backward compatible: joinProjectRoom(projectId) or joinProjectRoom(token, projectId)
+  const projectId = maybeProjectId == null ? _tokenOrProjectId : maybeProjectId;
   const id = Number(projectId);
   if (!Number.isInteger(id) || id <= 0) return () => {};
-  authToken = token || authToken;
-  const s = connectSocket(authToken);
+  const s = connectSocket();
   const key = roomKey("project", id);
   roomRefs.set(key, (roomRefs.get(key) || 0) + 1);
   if (roomRefs.get(key) === 1) {
-    const join = () => s.emit("joinProject", { token: authToken, projectId: id });
+    const join = () => s.emit("joinProject", { projectId: id });
     if (s.connected) join();
     else s.once("connect", join);
   }
@@ -96,15 +94,15 @@ export function leaveProjectRoom(projectId) {
   }
 }
 
-export function joinIssueRoom(token, issueId) {
+export function joinIssueRoom(_tokenOrIssueId, maybeIssueId) {
+  const issueId = maybeIssueId == null ? _tokenOrIssueId : maybeIssueId;
   const id = Number(issueId);
   if (!Number.isInteger(id) || id <= 0) return () => {};
-  authToken = token || authToken;
-  const s = connectSocket(authToken);
+  const s = connectSocket();
   const key = roomKey("issue", id);
   roomRefs.set(key, (roomRefs.get(key) || 0) + 1);
   if (roomRefs.get(key) === 1) {
-    const join = () => s.emit("joinIssue", { token: authToken, issueId: id });
+    const join = () => s.emit("joinIssue", { issueId: id });
     if (s.connected) join();
     else s.once("connect", join);
   }

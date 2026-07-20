@@ -5,8 +5,8 @@ import {
   RightOutlined,
   UnorderedListOutlined,
 } from "@ant-design/icons";
-import dayjs from "dayjs";
 import { PriorityTag, StatusTag } from "../ui/StatusTag";
+import { formatDateTime } from "../../utils/datetime";
 
 export function StartupWorkModal({
   open,
@@ -142,7 +142,7 @@ export function StartupWorkModal({
                       <div>
                         <div className="text-slate-600">{item.message}</div>
                         <div className="mt-1 text-xs text-slate-400">
-                          {item.created_at ? dayjs(item.created_at).format("D MMM YYYY HH:mm") : ""}
+                          {item.created_at ? formatDateTime(item.created_at, "") : ""}
                         </div>
                       </div>
                     )}

@@ -25,6 +25,7 @@ import {
 import { PageHeader } from "../components/ui/PageHeader";
 import { accessAdminApi } from "../services/api";
 import { hasPermission } from "../utils/access";
+import { formatDateTime } from "../utils/datetime";
 
 const STATUS_META = {
   pending: ["รออนุมัติ", "gold"],
@@ -412,7 +413,7 @@ function AuditPanel() {
             title: "เวลา",
             dataIndex: "created_at",
             width: 190,
-            render: (value) => value ? new Date(value).toLocaleString("th-TH") : "-",
+            render: (value) => formatDateTime(value),
           },
           {
             title: "ผู้ดำเนินการ",

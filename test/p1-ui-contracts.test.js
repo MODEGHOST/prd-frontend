@@ -47,5 +47,6 @@ test("admin invitation and invite-aware registration are reachable", () => {
   assert.match(accessPage, /resendInvitation/);
   assert.match(accessPage, /revokeInvitation/);
   assert.match(loginPage, /inviteToken/);
+  assert.match(loginPage, /setMode\("register"\)/);
   assert.match(loginPage, /disabled=\{Boolean\(invitation\)\}/);
 });

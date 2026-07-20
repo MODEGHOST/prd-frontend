@@ -16,7 +16,7 @@ import {
   MessageOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
-import dayjs from "dayjs";
+import { formatDateTime } from "../../utils/datetime";
 
 function fallbackTarget(item) {
   if (item.target_url) return item.target_url;
@@ -58,7 +58,7 @@ function NotificationItem({ item, onClick }) {
             ) : null}
             <div className="line-clamp-2 text-xs text-slate-500">{item.message}</div>
             <div className="mt-1 text-[11px] text-slate-400">
-              {item.created_at ? dayjs(item.created_at).format("D MMM YYYY HH:mm") : ""}
+              {item.created_at ? formatDateTime(item.created_at, "") : ""}
             </div>
           </div>
         }

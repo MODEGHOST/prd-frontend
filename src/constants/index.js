@@ -1,3 +1,6 @@
+/** Product version (SemVer). Source of truth: frontend/package.json → injected at build time. */
+export const APP_VERSION = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "1.0.0";
+
 export const STATUS_LABELS = {
   pending: "รออนุมัติ",
   active: "กำลังดำเนินการ",

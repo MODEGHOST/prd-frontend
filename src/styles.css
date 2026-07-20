@@ -66,6 +66,17 @@ body {
   padding: 8px 12px 12px;
 }
 
+.kanban-column-list {
+  max-height: calc(100vh - 280px);
+  min-height: 360px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.kanban-column-list .virtual-list-item + .virtual-list-item {
+  margin-top: 0.625rem;
+}
+
 .task-card-draggable {
   cursor: grab;
 }
@@ -157,6 +168,18 @@ body {
   fill: #22c55e !important;
 }
 
+/* ช่วงงานที่สิ้นสุดหลังวันสิ้นสุดโครงการ — ขอบประสีส้มให้แยกจากสถานะปกติ */
+.project-plan-gantt .bar-wrapper.project-plan-overrun .bar {
+  stroke: #ea580c !important;
+  stroke-width: 2.5px !important;
+  stroke-dasharray: 5 3;
+  filter: drop-shadow(0 0 0.5px #ea580c);
+}
+
+.project-plan-gantt .bar-wrapper.project-plan-overrun .bar-progress {
+  fill-opacity: 0.9;
+}
+
 .project-plan-gantt .bar-label {
   font-family: "Noto Sans Thai", "Segoe UI", system-ui, sans-serif;
   font-weight: 600;
@@ -172,6 +195,11 @@ body {
   fill: #b91c1c !important;
   dominant-baseline: central;
   pointer-events: none;
+}
+
+.project-plan-gantt .bar-assignee-label.bar-overrun-label {
+  fill: #c2410c !important;
+  font-weight: 700;
 }
 
 .project-plan-side {
@@ -202,4 +230,15 @@ body {
   margin-top: 7px;
   font-weight: 600;
   color: #475569;
+}
+
+.project-plan-popup-overrun {
+  margin-top: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #fff7ed;
+  border: 1px dashed #ea580c;
+  color: #c2410c;
+  font-size: 12px;
+  font-weight: 600;
 }

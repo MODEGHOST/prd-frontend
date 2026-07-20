@@ -28,5 +28,6 @@ test("large project data loads only when its feature is opened", () => {
   assert.match(projectDetail, /activeTab !== "weekly"/);
   assert.match(projectDetail, /activeTab !== "tasks"/);
   assert.match(projectDetail, /activeTab !== "chat"/);
-  assert.match(projectDetail, /listMessages\(projectId, \{ limit: 200 \}\)/);
+  assert.match(projectDetail, /listByColumns\(\{ projectId, limit: 100 \}\)/);
+  assert.match(projectDetail, /listMessages\(projectId, \{ limit: 100 \}\)/);
 });

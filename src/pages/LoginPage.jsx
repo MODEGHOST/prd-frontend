@@ -115,6 +115,7 @@ export function LoginPage({ onLogin }) {
       .then((data) => {
         setInvitation(data);
         setCompanies([{ id: data.company_id, name: data.company_name }]);
+        setMode("register");
       })
       .catch((err) => setError(err.message));
   }, [inviteToken]);

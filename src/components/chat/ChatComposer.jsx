@@ -12,7 +12,7 @@ import { formatChatTimestamp } from "./chatTimeline";
 
 export { chatTimelineMeta, formatChatTimestamp } from "./chatTimeline";
 
-export const MAX_CHAT_FILES = 5;
+export const MAX_CHAT_FILES = 15;
 export const CHAT_FILE_ACCEPT = ".jpg,.jpeg,.png,.gif,.webp,.pdf,.txt";
 export const INLINE_IMAGE_TYPES = new Set([
   "image/jpeg",

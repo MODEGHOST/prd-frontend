@@ -5,7 +5,6 @@ import {
   Avatar,
   Button,
   Checkbox,
-  DatePicker,
   Descriptions,
   Divider,
   Drawer,
@@ -23,7 +22,6 @@ import {
   Typography,
   message,
 } from "antd";
-import dayjs from "dayjs";
 import {
   DeleteOutlined,
   DownloadOutlined,
@@ -40,8 +38,10 @@ import { ProjectForm } from "../forms/ProjectForm";
 import { IssueForm } from "../forms/IssueForm";
 import { issuesApi, projectsApi, usersApi } from "../../services/api";
 import { getSocket, joinIssueRoom } from "../../services/socket";
+import { AppDatePicker } from "../ui/AppDatePicker";
 import { PriorityTag, StatusTag } from "../ui/StatusTag";
 import { isRequesterPersona } from "../../utils/access";
+import { dayjs, formatDateTime, toApiDateTime, toDayjs } from "../../utils/datetime";
 
 const WORKFLOW_STEPS = [
   { title: "รอรับเรื่อง" },
@@ -118,7 +118,7 @@ function currentRequesterWorkflowStep(detail) {
 }
 
 function formatDate(value) {
-  return value ? dayjs(value).format("D MMM YYYY HH:mm") : "ยังไม่ระบุ";
+  return formatDateTime(value, "ยังไม่ระบุ");
 }
 
 function formatActualDuration(detail) {
@@ -227,15 +227,8 @@ export function IssueDetail({ issue, user, users: usersProp, open, onClose, onCh
 
   useEffect(() => {
     if (!open || !issue?.id) return undefined;
-    let token;
-    try {
-      token = JSON.parse(localStorage.getItem("projecthub-session"))?.token;
-    } catch {
-      token = null;
-    }
-    if (!token) return undefined;
 
-    const leave = joinIssueRoom(token, issue.id);
+    const leave = joinIssueRoom(issue.id);
     const socket = getSocket();
     const onMessage = (item) => {
       if (Number(item.issue_id) !== Number(issue.id)) return;
@@ -402,7 +395,7 @@ export function IssueDetail({ issue, user, users: usersProp, open, onClose, onCh
   const saveEstimate = async (value) => {
     await runAction(
       () => issuesApi.update(detail.id, {
-        estimatedCompletionAt: value ? value.format("YYYY-MM-DD HH:mm:ss") : null,
+        estimatedCompletionAt: value ? toApiDateTime(value) : null,
       }),
       value ? "บันทึกเวลาคาดว่าจะเสร็จแล้ว" : "ยกเลิกเวลาคาดว่าจะเสร็จแล้ว",
     );
@@ -549,6 +542,9 @@ export function IssueDetail({ issue, user, users: usersProp, open, onClose, onCh
                 <Descriptions.Item label="ระบบ / Component">
                   {detail.system_component || "ไม่ระบุ"}
                 </Descriptions.Item>
+                <Descriptions.Item label="ผู้รับผิดชอบ">
+                  {detail.assignee_name || "รอทีมงานรับเรื่อง"}
+                </Descriptions.Item>
                 <Descriptions.Item label="วันที่แจ้ง">{formatDate(detail.created_at)}</Descriptions.Item>
                 <Descriptions.Item label="คาดว่าจะเสร็จ">
                   {detail.estimated_completion_at
@@ -652,12 +648,11 @@ export function IssueDetail({ issue, user, users: usersProp, open, onClose, onCh
                 {permissions.canUpdate && !detail.eta_locked ? (
                   <div className="mt-4">
                     <Typography.Text className="mb-1 block">เวลาคาดว่าจะเสร็จ (ไม่บังคับ)</Typography.Text>
-                    <DatePicker
+                    <AppDatePicker
                       showTime
                       allowClear
-                      className="w-full"
                       value={detail.estimated_completion_at
-                        ? dayjs(detail.estimated_completion_at)
+                        ? toDayjs(detail.estimated_completion_at)
                         : null}
                       onChange={saveEstimate}
                       disabledDate={(date) => date?.isBefore(dayjs().startOf("day"))}

@@ -77,7 +77,7 @@ function AuthenticatedApp({
   }, []);
 
   useEffect(() => {
-    if (!session?.token) return undefined;
+    if (!session?.user) return undefined;
 
     let active = true;
     setWorkSummary(null);
@@ -94,7 +94,7 @@ function AuthenticatedApp({
     return () => {
       active = false;
     };
-  }, [session?.token]);
+  }, [session?.user?.id, session?.user?.companyId]);
 
   useEffect(() => {
     if (!showStartupSummary || !workSummary) return;
@@ -107,7 +107,7 @@ function AuthenticatedApp({
   }, [revision, refreshWorkSummary]);
 
   useEffect(() => {
-    if (!session?.token) return undefined;
+    if (!session?.user) return undefined;
 
     let active = true;
     notificationsApi
@@ -120,7 +120,7 @@ function AuthenticatedApp({
       })
       .catch(() => {});
 
-    const socket = connectSocket(session.token);
+    const socket = connectSocket();
 
     const onNotification = (item) => {
       if (item.actor_id != null && Number(item.actor_id) === Number(session.user.id)) {
@@ -143,7 +143,7 @@ function AuthenticatedApp({
       active = false;
       socket.off("notification", onNotification);
     };
-  }, [session?.token, session?.user?.id, requesterView, openChat, refreshWorkSummary]);
+  }, [session?.user?.id, session?.user?.companyId, requesterView, openChat, refreshWorkSummary]);
 
   const markRead = async () => {
     try {
@@ -178,12 +178,18 @@ function AuthenticatedApp({
     try {
       const nextSession = await authApi.switchCompany(companyId);
       disconnectSocket();
+      dashboardApi.invalidate();
       setOpenChats([]);
       setNotifications([]);
       setUnreadNotifications(0);
       setWorkSummary(null);
       setStartupModalOpen(false);
-      setSession({ ...session, ...nextSession });
+      setSession({
+        user: nextSession.user,
+        companies: session.companies,
+      });
+      // Leave tenant-specific deep links (project detail, issue URL) and remount pages.
+      navigate("/", { replace: true });
       message.success(`เปลี่ยนเป็น ${nextSession.user?.companyName || "บริษัทที่เลือก"} แล้ว`);
     } catch (error) {
       message.error(error.message);
@@ -220,13 +226,16 @@ function AuthenticatedApp({
       <AppLayout
         session={session}
         onLogout={() => {
-          disconnectSocket();
-          setOpenChats([]);
-          setNotifications([]);
-          setUnreadNotifications(0);
-          setWorkSummary(null);
-          setStartupModalOpen(false);
-          setSession(null);
+          const finish = () => {
+            disconnectSocket();
+            setOpenChats([]);
+            setNotifications([]);
+            setUnreadNotifications(0);
+            setWorkSummary(null);
+            setStartupModalOpen(false);
+            setSession(null);
+          };
+          authApi.logout().catch(() => {}).finally(finish);
         }}
         notifications={notifications}
         unreadNotifications={unreadNotifications}
@@ -237,7 +246,7 @@ function AuthenticatedApp({
         onSwitchCompany={switchCompany}
         switchingCompany={switchingCompany}
       >
-        <AppRoutes session={session} />
+        <AppRoutes key={session.user.companyId} session={session} />
       </AppLayout>
       <StartupWorkModal
         open={startupModalOpen}
@@ -268,12 +277,15 @@ function AuthenticatedApp({
 
 export default function App() {
   const [session, setSession] = useSession();
-  const [restoring, setRestoring] = useState(Boolean(session?.token));
+  const [restoring, setRestoring] = useState(true);
   const [loginSummaryRequested, setLoginSummaryRequested] = useState(false);
 
   const completeLogin = useCallback((nextSession) => {
     setLoginSummaryRequested(true);
-    setSession(nextSession);
+    setSession({
+      user: nextSession.user,
+      companies: nextSession.companies || [],
+    });
   }, [setSession]);
 
   const consumeLoginSummaryRequest = useCallback(() => {
@@ -292,18 +304,14 @@ export default function App() {
   }, [setSession]);
 
   useEffect(() => {
-    if (!session?.token) {
-      setRestoring(false);
-      return;
-    }
     let active = true;
     authApi.me()
       .then((data) => {
         if (!active) return;
-        setSession({ ...session, ...data, token: data.token || session.token });
+        setSession({ user: data.user, companies: data.companies || [] });
       })
-      .catch((error) => {
-        if (active && [401, 403].includes(error.status)) setSession(null);
+      .catch(() => {
+        if (active) setSession(null);
       })
       .finally(() => {
         if (active) setRestoring(false);
@@ -311,9 +319,7 @@ export default function App() {
     return () => {
       active = false;
     };
-    // Validate only when a stored token changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.token]);
+  }, [setSession]);
 
   return (
     <ConfigProvider

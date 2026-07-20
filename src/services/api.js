@@ -3,29 +3,26 @@ import axios from "axios";
 const api = axios.create({
   baseURL: "/api",
   timeout: 15000,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-api.interceptors.request.use((config) => {
-  try {
-    const session = JSON.parse(localStorage.getItem("projecthub-session"));
-    if (session?.token) {
-      config.headers.Authorization = `Bearer ${session.token}`;
-    }
-  } catch {
-    // ignore invalid session
-  }
-  return config;
-});
+api.interceptors.request.use((config) => config);
 
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    if (error.response?.status === 401 && localStorage.getItem("projecthub-session")) {
+    if (error.response?.status === 401) {
+      const hadSession = Boolean(localStorage.getItem("projecthub-session"));
       localStorage.removeItem("projecthub-session");
-      window.dispatchEvent(new Event("projecthub:session-expired"));
+      const requestUrl = String(error.config?.url || "");
+      const isBootstrapMe = String(error.config?.method || "get").toLowerCase() === "get"
+        && requestUrl.includes("/auth/me");
+      if (hadSession && !isBootstrapMe) {
+        window.dispatchEvent(new Event("projecthub:session-expired"));
+      }
     }
     const message = error.response?.data?.message || error.message || "ไม่สามารถเชื่อมต่อระบบได้";
     const apiError = new Error(message);
@@ -66,20 +63,31 @@ export const authApi = {
   forgotPassword: (email) => api.post("/auth/forgot-password", { email }),
   resetPassword: (token, password) => api.post("/auth/reset-password", { token, password }),
   switchCompany: (companyId) => api.post("/auth/switch-company", { companyId }),
+  logout: () => api.post("/auth/logout"),
 };
 
 let dashboardRequest = null;
+let dashboardRequestGeneration = 0;
 
 export const dashboardApi = {
   // The shell and dashboard page mount together after a hard refresh. Share the
   // same in-flight request so the expensive dashboard aggregate is not queried twice.
   get: () => {
     if (!dashboardRequest) {
+      const generation = dashboardRequestGeneration;
       dashboardRequest = api.get("/dashboard").finally(() => {
-        dashboardRequest = null;
+        if (dashboardRequestGeneration === generation) {
+          dashboardRequest = null;
+        }
       });
     }
     return dashboardRequest;
+  },
+  // Drop any in-flight shared response after company switch so the next get()
+  // cannot reuse data from the previous tenant.
+  invalidate: () => {
+    dashboardRequestGeneration += 1;
+    dashboardRequest = null;
   },
 };
 
@@ -167,6 +175,29 @@ export const issuesApi = {
 
 export const tasksApi = {
   list: (params) => api.get("/tasks", { params }).then(unwrapPage),
+  /**
+   * Fetch board/detail tasks per status column so large projects stay bounded.
+   * When `status` is set, only that column is requested.
+   */
+  listByColumns: async (params = {}) => {
+    const { status, limit = 100, ...rest } = params;
+    const columns = status
+      ? [status]
+      : ["todo", "doing", "review", "done"];
+    const pages = await Promise.all(
+      columns.map((columnStatus) =>
+        api.get("/tasks", {
+          params: { ...rest, status: columnStatus, limit },
+        }).then(unwrapPage)),
+    );
+    return {
+      items: pages.flatMap((page) => page.items),
+      totals: Object.fromEntries(
+        columns.map((columnStatus, index) => [columnStatus, pages[index].total]),
+      ),
+      columnLimit: limit,
+    };
+  },
   create: (payload) => api.post("/tasks", payload),
   update: (id, payload) => api.patch(`/tasks/${id}`, payload),
 };

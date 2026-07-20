@@ -22,6 +22,7 @@ export function IssueDrawerProvider({ session, children }) {
   const [issue, setIssue] = useState(null);
   const [revision, setRevision] = useState(0);
   const suppressUrlOpenRef = useRef(false);
+  const previousCompanyIdRef = useRef(session?.user?.companyId);
 
   const clearIssueFromUrl = useCallback(() => {
     if (location.pathname !== "/issues") return;
@@ -86,6 +87,23 @@ export function IssueDrawerProvider({ session, children }) {
     setIssue((current) => (Number(current?.id) === issueId ? current : { id: issueId }));
   }, [location.pathname, location.search]);
 
+  // สลับบริษัทแล้วต้องปิด drawer / ล้าง state ของ Ticket บริษัทเดิม
+  useEffect(() => {
+    const companyId = session?.user?.companyId;
+    const previousCompanyId = previousCompanyIdRef.current;
+    previousCompanyIdRef.current = companyId;
+    if (previousCompanyId == null || Number(previousCompanyId) === Number(companyId)) {
+      return undefined;
+    }
+    suppressUrlOpenRef.current = true;
+    setIssue(null);
+    clearIssueFromUrl();
+    const timer = window.setTimeout(() => {
+      suppressUrlOpenRef.current = false;
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [session?.user?.companyId, clearIssueFromUrl]);
+
   const value = useMemo(
     () => ({ issue, openIssue, closeIssue, revision }),
     [issue, openIssue, closeIssue, revision],
@@ -97,7 +115,7 @@ export function IssueDrawerProvider({ session, children }) {
       {session ? (
         <Suspense fallback={null}>
           <IssueDetail
-            key="global-issue-drawer"
+            key={`global-issue-drawer-${session.user.companyId}`}
             issue={issue}
             user={session.user}
             open={Boolean(issue?.id)}

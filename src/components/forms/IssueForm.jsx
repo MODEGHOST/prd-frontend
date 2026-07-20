@@ -96,17 +96,17 @@ export function IssueForm({
                 status: "done",
                 originFileObj: file,
               })),
-            ].slice(0, 5));
+            ].slice(0, 15));
           }}
         />
       </Form.Item>
       {showAttachments ? (
-        <Form.Item label="ไฟล์แนบ" extra="ลากไฟล์มาวาง หรือวางรูปจาก clipboard ในช่องรายละเอียด (สูงสุด 5 ไฟล์)">
+        <Form.Item label="ไฟล์แนบ" extra="ลากไฟล์มาวาง หรือวางรูปจาก clipboard ในช่องรายละเอียด (สูงสุด 15 ไฟล์ · ไฟล์ละไม่เกิน 25MB)">
           <Upload.Dragger
             multiple
             fileList={files}
             beforeUpload={() => false}
-            onChange={({ fileList }) => setFiles(fileList.slice(0, 5))}
+            onChange={({ fileList }) => setFiles(fileList.slice(0, 15))}
             accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.txt"
           >
             <p className="ant-upload-drag-icon"><InboxOutlined /></p>

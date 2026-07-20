@@ -1,5 +1,4 @@
-import dayjs from "dayjs";
-import "dayjs/locale/th.js";
+import { dayjs, formatDateTime } from "../../utils/datetime";
 
 export function chatTimelineMeta(messages, index) {
   const current = messages[index];
@@ -25,5 +24,5 @@ export function formatChatTimestamp(value, now = dayjs()) {
   if (timestamp.isSame(now.subtract(1, "day"), "day")) {
     return `เมื่อวาน ${timestamp.format("HH:mm")}`;
   }
-  return timestamp.locale("th").format("D MMM YYYY HH:mm");
+  return formatDateTime(timestamp, "");
 }

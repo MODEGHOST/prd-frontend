@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Button, DatePicker, Form, Input, Select } from "antd";
-import dayjs from "dayjs";
+import { Button, Form, Input, Select } from "antd";
+import { AppRangePicker } from "../ui/AppDatePicker";
+import { toApiDate } from "../../utils/datetime";
 import { usersApi } from "../../services/api";
 
 export function ProjectForm({
@@ -74,8 +75,8 @@ export function ProjectForm({
         code: values.code,
         description: values.description,
         prd: values.prd,
-        startDate: values.range?.[0] ? dayjs(values.range[0]).format("YYYY-MM-DD") : "",
-        endDate: values.range?.[1] ? dayjs(values.range[1]).format("YYYY-MM-DD") : "",
+        startDate: values.range?.[0] ? toApiDate(values.range[0]) : "",
+        endDate: values.range?.[1] ? toApiDate(values.range[1]) : "",
         ownerId,
         memberIds,
       });
@@ -108,7 +109,7 @@ export function ProjectForm({
         <Input.TextArea rows={5} />
       </Form.Item>
       <Form.Item name="range" label="ระยะเวลาโครงการ">
-        <DatePicker.RangePicker className="w-full" />
+        <AppRangePicker />
       </Form.Item>
       <Form.Item
         name="ownerId"

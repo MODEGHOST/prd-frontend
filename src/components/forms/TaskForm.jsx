@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Button, DatePicker, Form, Input, Select } from "antd";
-import dayjs from "dayjs";
+import { Button, Form, Input, Select } from "antd";
+import { AppDatePicker } from "../ui/AppDatePicker";
+import { toApiDate } from "../../utils/datetime";
 import { usersApi } from "../../services/api";
 
 export function TaskForm({ onSubmit, loading, users: usersProp }) {
@@ -36,8 +37,8 @@ export function TaskForm({ onSubmit, loading, users: usersProp }) {
         priority: values.priority,
         difficulty: values.difficulty,
         assigneeId: values.assigneeId || "",
-        startDate: values.startDate ? dayjs(values.startDate).format("YYYY-MM-DD") : "",
-        dueDate: values.dueDate ? dayjs(values.dueDate).format("YYYY-MM-DD") : "",
+        startDate: values.startDate ? toApiDate(values.startDate) : "",
+        dueDate: values.dueDate ? toApiDate(values.dueDate) : "",
       });
       form.resetFields();
     } catch {
@@ -95,10 +96,10 @@ export function TaskForm({ onSubmit, loading, users: usersProp }) {
           />
         </Form.Item>
         <Form.Item name="startDate" label="วันเริ่ม">
-          <DatePicker className="w-full" />
+          <AppDatePicker />
         </Form.Item>
         <Form.Item name="dueDate" label="กำหนดส่ง">
-          <DatePicker className="w-full" />
+          <AppDatePicker />
         </Form.Item>
       </div>
       <Button type="primary" htmlType="submit" block loading={loading}>

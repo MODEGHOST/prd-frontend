@@ -5,7 +5,6 @@ import {
   Avatar,
   Button,
   Card,
-  DatePicker,
   Empty,
   Form,
   Input,
@@ -23,8 +22,8 @@ import {
   PlusOutlined,
   TeamOutlined,
 } from "@ant-design/icons";
-import dayjs from "dayjs";
 import { TaskForm } from "../components/forms/TaskForm";
+import { AppRangePicker } from "../components/ui/AppDatePicker";
 import { PageHeader } from "../components/ui/PageHeader";
 import { PriorityTag, StatusTag } from "../components/ui/StatusTag";
 import {
@@ -36,6 +35,13 @@ import {
 import { projectsApi, tasksApi, usersApi } from "../services/api";
 import { getSocket, joinProjectRoom } from "../services/socket";
 import { hasPermission } from "../utils/access";
+import {
+  dayjs,
+  formatDate,
+  formatDateRange,
+  formatDateShort,
+  toApiDate,
+} from "../utils/datetime";
 import {
   ChatMessageAttachments,
   ChatReplyAction,
@@ -197,6 +203,11 @@ function ManageMembersModal({ open, onCancel, onSave, saving, users, members, ow
   );
 }
 
+function isPlanPastProjectEnd(planEnd, projectEnd) {
+  if (!projectEnd || !planEnd) return false;
+  return dayjs(planEnd).startOf("day").isAfter(dayjs(projectEnd).startOf("day"));
+}
+
 function ProjectPlanModal({
   open,
   onCancel,
@@ -208,6 +219,12 @@ function ProjectPlanModal({
   plan,
 }) {
   const [form] = Form.useForm();
+  const watchedRange = Form.useWatch("range", form);
+  const exceedsProjectEnd = Boolean(
+    projectEnd
+    && watchedRange?.[1]
+    && dayjs(watchedRange[1]).startOf("day").isAfter(dayjs(projectEnd).startOf("day")),
+  );
 
   const assigneeOptions = useMemo(() => {
     const options = new Map();
@@ -233,30 +250,37 @@ function ProjectPlanModal({
   }, [members, plan]);
 
   useEffect(() => {
-    if (open) {
-      form.resetFields();
-      if (plan) {
-        form.setFieldsValue({
-          range: [
-            dayjs(plan.week_start || plan.weekStart),
-            dayjs(plan.week_end || plan.weekEnd),
-          ],
-          title: plan.title,
-          description: plan.description || "",
-          assigneeId: plan.assignee_id ? Number(plan.assignee_id) : undefined,
-          status: plan.status || "planned",
-        });
-      }
+    if (!open) return;
+    form.resetFields();
+    if (plan) {
+      form.setFieldsValue({
+        range: [
+          dayjs(plan.week_start || plan.weekStart),
+          dayjs(plan.week_end || plan.weekEnd),
+        ],
+        title: plan.title,
+        description: plan.description || "",
+        assigneeId: plan.assignee_id ? Number(plan.assignee_id) : undefined,
+        status: plan.status || "planned",
+      });
+      return;
     }
-  }, [open, form, plan]);
+    // เพิ่มใหม่: ใส่ช่วงโครงการให้เป็นค่าเริ่มต้น แล้วให้ปรับย่อย/ขยายได้
+    if (projectStart && projectEnd) {
+      form.setFieldsValue({
+        range: [dayjs(projectStart), dayjs(projectEnd)],
+        status: "planned",
+      });
+    }
+  }, [open, form, plan, projectStart, projectEnd]);
 
   const handleFinish = async (values) => {
     try {
       await onSubmit({
         title: values.title,
         description: values.description || "",
-        weekStart: values.range?.[0] ? dayjs(values.range[0]).format("YYYY-MM-DD") : "",
-        weekEnd: values.range?.[1] ? dayjs(values.range[1]).format("YYYY-MM-DD") : "",
+        weekStart: values.range?.[0] ? toApiDate(values.range[0]) : "",
+        weekEnd: values.range?.[1] ? toApiDate(values.range[1]) : "",
         assigneeId: values.assigneeId ? Number(values.assigneeId) : null,
         status: values.status || "planned",
       });
@@ -285,19 +309,25 @@ function ProjectPlanModal({
         <Form.Item
           name="range"
           label="ช่วงวันที่ดำเนินงาน"
-          extra={
-            projectStart && projectEnd
-              ? `ช่วงโครงการ ${dayjs(projectStart).format("DD/MM/YYYY")} – ${dayjs(projectEnd).format("DD/MM/YYYY")}`
-              : "ควรกำหนดวันเริ่มและวันสิ้นสุดของโครงการก่อน"
-          }
+          extra={(
+            <div className="space-y-1">
+              <div>
+                {projectStart && projectEnd
+                  ? `ช่วงโครงการ ${formatDateRange(projectStart, projectEnd)} · ขยายเกินวันสิ้นสุดได้ถ้างานล่าช้า`
+                  : "ควรกำหนดวันเริ่มและวันสิ้นสุดของโครงการก่อน"}
+              </div>
+              {exceedsProjectEnd ? (
+                <div className="font-medium text-amber-700">
+                  ช่วงนี้อยู่นอกวันสิ้นสุดโครงการ — จะถูกทำเครื่องหมายว่าเกินกำหนดบน Gantt
+                </div>
+              ) : null}
+            </div>
+          )}
           rules={[{ required: true, message: "กรุณาเลือกช่วงวันที่ดำเนินงาน" }]}
         >
-          <DatePicker.RangePicker
-            className="w-full"
-            format="DD/MM/YYYY"
+          <AppRangePicker
             disabledDate={(current) => (
-              (projectStart && current.isBefore(dayjs(projectStart), "day"))
-              || (projectEnd && current.isAfter(dayjs(projectEnd), "day"))
+              Boolean(projectStart && current.isBefore(dayjs(projectStart), "day"))
             )}
           />
         </Form.Item>
@@ -417,8 +447,32 @@ function shortPersonName(name) {
 function ProjectPlanTimeline({ project, plans, canEdit, onEdit }) {
   const ganttRef = useRef(null);
   const ganttInstanceRef = useRef(null);
+  const scrollRef = useRef(null);
+  const scrollRafRef = useRef(0);
   const [sideMeta, setSideMeta] = useState({ headerHeight: 88, rowHeight: 58 });
+  const [windowStart, setWindowStart] = useState(0);
+  const [viewportRows, setViewportRows] = useState(12);
   const validProjectRange = project?.start_date && project?.end_date;
+  const rowHeight = sideMeta.rowHeight || 58;
+  const overscan = 6;
+  const windowEnd = Math.min(plans.length, windowStart + viewportRows + overscan * 2);
+  const visibleStart = Math.max(0, windowStart - overscan);
+  const visiblePlans = useMemo(
+    () => plans.slice(visibleStart, windowEnd),
+    [plans, visibleStart, windowEnd],
+  );
+
+  const updateWindowFromScroll = useCallback(() => {
+    const node = scrollRef.current;
+    if (!node) return;
+    if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
+    scrollRafRef.current = requestAnimationFrame(() => {
+      const nextStart = Math.max(0, Math.floor(node.scrollTop / rowHeight));
+      const nextViewport = Math.max(8, Math.ceil(node.clientHeight / rowHeight));
+      setWindowStart((current) => (current === nextStart ? current : nextStart));
+      setViewportRows((current) => (current === nextViewport ? current : nextViewport));
+    });
+  }, [rowHeight]);
 
   const renderGantt = useCallback(() => {
     const container = ganttRef.current;
@@ -430,6 +484,7 @@ function ProjectPlanTimeline({ project, plans, canEdit, onEdit }) {
     }
     container.innerHTML = "";
 
+    // ใช้แผนทั้งหมดคำนวณแกนเวลา ให้เลื่อนแนวตั้งแล้วสเกลวันไม่กระโดด
     const view = getPlanViewConfig(
       project.start_date,
       project.end_date,
@@ -440,11 +495,12 @@ function ProjectPlanTimeline({ project, plans, canEdit, onEdit }) {
       ),
     );
 
-    const tasks = plans.map((plan) => {
+    const tasks = visiblePlans.map((plan) => {
       const start = String(plan.week_start || plan.weekStart || "").slice(0, 10);
       const end = String(plan.week_end || plan.weekEnd || "").slice(0, 10);
       const assignee = plan.assignee_name || "ไม่ระบุ";
       const title = plan.title || "ช่วงงาน";
+      const overdue = isPlanPastProjectEnd(end, project.end_date);
       return {
         id: String(plan.id),
         name: truncateBarLabel(title, start, end, view.columnWidth),
@@ -453,10 +509,14 @@ function ProjectPlanTimeline({ project, plans, canEdit, onEdit }) {
         start,
         end,
         progress: PLAN_PROGRESS[plan.status] ?? 0,
-        custom_class: `project-plan-${plan.status || "planned"}`,
+        custom_class: [
+          `project-plan-${plan.status || "planned"}`,
+          overdue ? "project-plan-overrun" : "",
+        ].filter(Boolean).join(" "),
         assignee,
         status: plan.status || "planned",
-        dateLabel: `${dayjs(start).format("DD/MM")}–${dayjs(end).format("DD/MM")}`,
+        overdue,
+        dateLabel: `${formatDateShort(start)}–${formatDateShort(end)}`,
       };
     }).filter((task) => task.start && task.end && task.start <= task.end);
 
@@ -474,7 +534,7 @@ function ProjectPlanTimeline({ project, plans, canEdit, onEdit }) {
         ? dayjs(d).format("D")
         : ""),
       upper_text: (d, ld) => (!ld || d.getMonth() !== ld.getMonth()
-        ? dayjs(d).format("MMM YYYY")
+        ? dayjs(d).format("MMM BBBB")
         : ""),
       thick_line: (d) => d.getDay() === 1,
     };
@@ -489,11 +549,10 @@ function ProjectPlanTimeline({ project, plans, canEdit, onEdit }) {
         return `${dayjs(d).format("D MMM")} - ${endOfWeek.format("D MMM")}`;
       },
       upper_text: (d, ld) => (!ld || d.getMonth() !== ld.getMonth()
-        ? dayjs(d).format("MMM YYYY")
+        ? dayjs(d).format("MMM BBBB")
         : ""),
     };
 
-    const rowHeight = 58;
     const gantt = new Gantt(container, tasks, {
       view_modes: view.viewMode === "Week" ? [weekMode] : [dayMode],
       view_mode_select: false,
@@ -511,14 +570,19 @@ function ProjectPlanTimeline({ project, plans, canEdit, onEdit }) {
       popup: ({ task, set_title, set_subtitle, set_details, add_action }) => {
         set_title(escapeHtml(task.title || task.name));
         set_subtitle(
-          `${escapeHtml(task.assignee)} · ${escapeHtml(STATUS_LABELS[task.status] || task.status)}`,
+          `${escapeHtml(task.assignee)} · ${escapeHtml(STATUS_LABELS[task.status] || task.status)}${
+            task.overdue ? " · เกินกำหนด" : ""
+          }`,
         );
         set_details(
           `<div class="project-plan-popup-details">
             <div>${escapeHtml(task.description || "ไม่มีรายละเอียด")}</div>
             <div class="project-plan-popup-dates">
-              ${escapeHtml(task.dateLabel || `${dayjs(task.start).format("DD/MM/YYYY")} – ${dayjs(task.end).format("DD/MM/YYYY")}`)}
+              ${escapeHtml(task.dateLabel || formatDateRange(task.start, task.end))}
             </div>
+            ${task.overdue
+              ? `<div class="project-plan-popup-overrun">เกินวันสิ้นสุดโครงการ (${formatDate(project.end_date)})</div>`
+              : ""}
           </div>`,
         );
         if (canEdit) {
@@ -567,10 +631,12 @@ function ProjectPlanTimeline({ project, plans, canEdit, onEdit }) {
 
         wrapper.querySelectorAll(".bar-assignee-label").forEach((node) => node.remove());
         const assigneeLabel = document.createElementNS(ns, "text");
-        assigneeLabel.setAttribute("class", "bar-assignee-label");
+        assigneeLabel.setAttribute("class", `bar-assignee-label${task.overdue ? " bar-overrun-label" : ""}`);
         assigneeLabel.setAttribute("x", String(barX + barWidth + 10));
         assigneeLabel.setAttribute("y", String(barY + 20));
-        assigneeLabel.textContent = shortPersonName(task.assignee);
+        assigneeLabel.textContent = task.overdue
+          ? `${shortPersonName(task.assignee)} · เกินกำหนด`
+          : shortPersonName(task.assignee);
         wrapper.appendChild(assigneeLabel);
       } catch {
         // keep bar visible even if label tweak fails
@@ -589,7 +655,7 @@ function ProjectPlanTimeline({ project, plans, canEdit, onEdit }) {
     const header = container.querySelector(".grid-header");
     const nextMeta = {
       headerHeight: Math.round(header?.getBoundingClientRect().height || 88),
-      rowHeight,
+      rowHeight: 58,
     };
     setSideMeta((current) => (
       current.headerHeight === nextMeta.headerHeight && current.rowHeight === nextMeta.rowHeight
@@ -598,10 +664,17 @@ function ProjectPlanTimeline({ project, plans, canEdit, onEdit }) {
     ));
 
     ganttInstanceRef.current = gantt;
-  }, [canEdit, onEdit, plans, project?.end_date, project?.start_date, validProjectRange]);
+  }, [
+    canEdit,
+    onEdit,
+    plans,
+    project?.end_date,
+    project?.start_date,
+    validProjectRange,
+    visiblePlans,
+  ]);
 
   useEffect(() => {
-    // รอให้ layout มีความกว้างจริงก่อนวาด เพื่อไม่ให้ chart ว่าง
     const timer = window.setTimeout(() => {
       renderGantt();
     }, 0);
@@ -641,6 +714,23 @@ function ProjectPlanTimeline({ project, plans, canEdit, onEdit }) {
     };
   }, [renderGantt]);
 
+  useEffect(() => {
+    const node = scrollRef.current;
+    if (!node) return undefined;
+    updateWindowFromScroll();
+    if (typeof ResizeObserver === "undefined") {
+      return () => {
+        if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
+      };
+    }
+    const observer = new ResizeObserver(() => updateWindowFromScroll());
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+      if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
+    };
+  }, [updateWindowFromScroll, plans.length]);
+
   if (!validProjectRange) {
     return (
       <Empty
@@ -652,6 +742,8 @@ function ProjectPlanTimeline({ project, plans, canEdit, onEdit }) {
   const timelineStart = dayjs(project.start_date);
   const timelineEnd = dayjs(project.end_date);
   const projectDays = Math.max(1, timelineEnd.diff(timelineStart, "day") + 1);
+  const topSpacer = visibleStart * rowHeight;
+  const bottomSpacer = Math.max(0, (plans.length - windowEnd) * rowHeight);
 
   return (
     <Card className="overflow-hidden rounded-2xl shadow-sm" styles={{ body: { padding: 0 } }}>
@@ -660,8 +752,9 @@ function ProjectPlanTimeline({ project, plans, canEdit, onEdit }) {
           <div>
             <div className="font-semibold text-slate-800">Gantt Chart แผนงานโปรเจกต์</div>
             <div className="mt-0.5 text-xs text-slate-500">
-              {timelineStart.format("DD/MM/YYYY")} – {timelineEnd.format("DD/MM/YYYY")}
+              {formatDateRange(timelineStart, timelineEnd)}
               {" · "}{projectDays} วัน
+              {" · "}{plans.length} ช่วงงาน
               {" · เห็นผู้รับผิดชอบข้างแถบทันที"}
               {canEdit ? " · คลิกแถบเพื่อแก้ไข" : ""}
             </div>
@@ -676,6 +769,10 @@ function ProjectPlanTimeline({ project, plans, canEdit, onEdit }) {
                 {option.label}
               </span>
             ))}
+            <span className="inline-flex items-center gap-1.5 text-xs text-amber-700">
+              <span className="h-2.5 w-2.5 rounded-full border-2 border-dashed border-amber-600 bg-amber-100" />
+              เกินวันสิ้นสุดโครงการ
+            </span>
           </Space>
         </div>
       </div>
@@ -684,36 +781,59 @@ function ProjectPlanTimeline({ project, plans, canEdit, onEdit }) {
           <Empty description="ยังไม่มีช่วงงานในแผนโปรเจกต์" />
         </div>
       ) : (
-        <div className="flex min-w-0 items-start">
-          <div className="project-plan-side w-52 shrink-0 border-r border-slate-200 bg-white">
-            <div
-              className="flex items-end border-b border-slate-200 bg-slate-50 px-3 pb-2 text-xs font-semibold text-slate-600"
-              style={{ height: sideMeta.headerHeight }}
-            >
-              ช่วงงาน / ผู้รับผิดชอบ
-            </div>
-            {plans.map((plan) => (
-              <button
-                key={plan.id}
-                type="button"
-                className={`flex w-full flex-col justify-center border-b border-slate-100 px-3 text-left transition ${
-                  canEdit ? "cursor-pointer hover:bg-red-50" : "cursor-default"
-                }`}
-                style={{ height: sideMeta.rowHeight }}
-                onClick={() => {
-                  if (canEdit) onEdit(plan);
-                }}
-                title={`${plan.title} · ${plan.assignee_name || "ไม่ระบุ"}`}
+        <div
+          ref={scrollRef}
+          className="project-plan-scroll max-h-[min(70vh,720px)] overflow-auto"
+          onScroll={updateWindowFromScroll}
+        >
+          <div className="flex min-w-0 items-start">
+            <div className="project-plan-side w-52 shrink-0 border-r border-slate-200 bg-white">
+              <div
+                className="sticky top-0 z-10 flex items-end border-b border-slate-200 bg-slate-50 px-3 pb-2 text-xs font-semibold text-slate-600"
+                style={{ height: sideMeta.headerHeight }}
               >
-                <div className="truncate text-sm font-semibold text-slate-800">{plan.title}</div>
-                <div className="mt-0.5 truncate text-xs font-medium text-red-700">
-                  {plan.assignee_name || "ไม่ระบุผู้รับผิดชอบ"}
-                </div>
-              </button>
-            ))}
-          </div>
-          <div className="min-w-0 flex-1 overflow-x-auto overflow-y-visible">
-            <div className="project-plan-gantt" ref={ganttRef} />
+                ช่วงงาน / ผู้รับผิดชอบ
+              </div>
+              <div style={{ height: topSpacer }} aria-hidden="true" />
+              {visiblePlans.map((plan) => {
+                const overdue = isPlanPastProjectEnd(
+                  plan.week_end || plan.weekEnd,
+                  project.end_date,
+                );
+                return (
+                  <button
+                    key={plan.id}
+                    type="button"
+                    className={`flex w-full flex-col justify-center border-b border-slate-100 px-3 text-left transition ${
+                      canEdit ? "cursor-pointer hover:bg-red-50" : "cursor-default"
+                    } ${overdue ? "bg-amber-50/70" : ""}`}
+                    style={{ height: rowHeight }}
+                    onClick={() => {
+                      if (canEdit) onEdit(plan);
+                    }}
+                    title={`${plan.title} · ${plan.assignee_name || "ไม่ระบุ"}${overdue ? " · เกินกำหนด" : ""}`}
+                  >
+                    <div className="flex items-center gap-1">
+                      <div className="truncate text-sm font-semibold text-slate-800">{plan.title}</div>
+                      {overdue ? (
+                        <Tag color="orange" className="m-0 shrink-0 px-1 text-[10px] leading-4">
+                          เกินกำหนด
+                        </Tag>
+                      ) : null}
+                    </div>
+                    <div className="mt-0.5 truncate text-xs font-medium text-red-700">
+                      {plan.assignee_name || "ไม่ระบุผู้รับผิดชอบ"}
+                    </div>
+                  </button>
+                );
+              })}
+              <div style={{ height: bottomSpacer }} aria-hidden="true" />
+            </div>
+            <div className="min-w-0 flex-1 overflow-x-auto overflow-y-visible">
+              <div style={{ height: topSpacer }} aria-hidden="true" />
+              <div className="project-plan-gantt" ref={ganttRef} />
+              <div style={{ height: bottomSpacer }} aria-hidden="true" />
+            </div>
           </div>
         </div>
       )}
@@ -731,7 +851,9 @@ export function ProjectDetailPage({ session }) {
   const [users, setUsers] = useState([]);
   const [weeklyPlans, setWeeklyPlans] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [taskColumnTotals, setTaskColumnTotals] = useState({});
   const [messages, setMessages] = useState([]);
+  const [messagesTotal, setMessagesTotal] = useState(0);
   const [weeklyPlansLoaded, setWeeklyPlansLoaded] = useState(false);
   const [tasksLoaded, setTasksLoaded] = useState(false);
   const [messagesLoaded, setMessagesLoaded] = useState(false);
@@ -821,7 +943,9 @@ export function ProjectDetailPage({ session }) {
     setUsers([]);
     setWeeklyPlans([]);
     setTasks([]);
+    setTaskColumnTotals({});
     setMessages([]);
+    setMessagesTotal(0);
     setWeeklyPlansLoaded(false);
     setTasksLoaded(false);
     setMessagesLoaded(false);
@@ -888,10 +1012,11 @@ export function ProjectDetailPage({ session }) {
     let active = true;
     setTabLoading(true);
     tasksApi
-      .list({ projectId, limit: 500 })
+      .listByColumns({ projectId, limit: 100 })
       .then((taskData) => {
         if (!active) return;
         setTasks(taskData.items);
+        setTaskColumnTotals(taskData.totals || {});
         setTasksLoaded(true);
       })
       .catch((err) => {
@@ -910,7 +1035,7 @@ export function ProjectDetailPage({ session }) {
     let active = true;
     setTabLoading(true);
     projectsApi
-      .listMessages(projectId, { limit: 200 })
+      .listMessages(projectId, { limit: 100 })
       .then((messageData) => {
         if (!active) return;
         setMessages((current) => {
@@ -922,6 +1047,7 @@ export function ProjectDetailPage({ session }) {
           messagesRef.current = next;
           return next;
         });
+        setMessagesTotal(Number(messageData.total || messageData.items.length));
         setMessagesLoaded(true);
       })
       .catch((err) => {
@@ -936,9 +1062,9 @@ export function ProjectDetailPage({ session }) {
   }, [activeTab, projectId, messagesLoaded]);
 
   useEffect(() => {
-    if (!session?.token || !projectId || error || activeTab !== "chat") return undefined;
+    if (!session?.user || !projectId || error || activeTab !== "chat") return undefined;
 
-    const leave = joinProjectRoom(session.token, projectId);
+    const leave = joinProjectRoom(projectId);
     const socket = getSocket();
     const onMessage = (item) => {
       if (Number(item.project_id) !== Number(projectId)) return;
@@ -955,7 +1081,7 @@ export function ProjectDetailPage({ session }) {
       socket.off("projectMessage", onMessage);
       leave();
     };
-  }, [session?.token, projectId, error, activeTab]);
+  }, [session?.user, projectId, error, activeTab]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -1017,7 +1143,9 @@ export function ProjectDetailPage({ session }) {
       await tasksApi.create({ ...values, projectId });
       message.success("เพิ่มงานเรียบร้อย");
       setTaskOpen(false);
-      setTasks((await tasksApi.list({ projectId, limit: 500 })).items);
+      const taskData = await tasksApi.listByColumns({ projectId, limit: 100 });
+      setTasks(taskData.items);
+      setTaskColumnTotals(taskData.totals || {});
       const data = await loadDetail();
       setDetail(data);
     } catch (err) {
@@ -1135,7 +1263,7 @@ export function ProjectDetailPage({ session }) {
             <div>
               <div className="text-xs text-slate-400">ระยะเวลา</div>
               <div>
-                {project.start_date || "-"} — {project.end_date || "-"}
+                {formatDateRange(project.start_date, project.end_date)}
               </div>
             </div>
             <div>
@@ -1311,13 +1439,19 @@ export function ProjectDetailPage({ session }) {
                 title={
                   <div className="flex items-center justify-between">
                     <span>{STATUS_LABELS[column]}</span>
-                    <Tag>{columnTasks.length}</Tag>
+                    <Tag>
+                      {Number.isFinite(taskColumnTotals[column])
+                        ? taskColumnTotals[column]
+                        : columnTasks.length}
+                    </Tag>
                   </div>
                 }
               >
                 <Table
                   size="small"
                   pagination={false}
+                  virtual
+                  scroll={{ x: true, y: 420 }}
                   rowKey="id"
                   dataSource={columnTasks}
                   columns={[
@@ -1343,10 +1477,15 @@ export function ProjectDetailPage({ session }) {
                       title: "กำหนดส่ง",
                       dataIndex: "due_date",
                       key: "due_date",
-                      render: (value) => value || "-",
+                      render: (value) => formatDate(value),
                     },
                   ]}
                 />
+                {Number(taskColumnTotals[column] || 0) > columnTasks.length ? (
+                  <div className="mt-2 text-center text-xs text-slate-400">
+                    แสดง {columnTasks.length} จาก {taskColumnTotals[column]} งาน
+                  </div>
+                ) : null}
               </Card>
             );
           })}
@@ -1362,6 +1501,11 @@ export function ProjectDetailPage({ session }) {
           <Empty className="py-10" description="ยังไม่มีข้อความในแชททีม" />
         ) : (
           <div className="flex flex-col">
+            {messagesTotal > messages.length ? (
+              <div className="mb-2 text-center text-xs text-slate-400">
+                แสดงข้อความล่าสุด {messages.length} จากทั้งหมด {messagesTotal}
+              </div>
+            ) : null}
             {messages.map((item, index) => {
               const isMine = Number(item.user_id) === Number(session.user.id);
               const timeline = chatTimelineMeta(messages, index);

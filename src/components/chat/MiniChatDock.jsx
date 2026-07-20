@@ -74,8 +74,8 @@ function MiniChat({ chat, session, onClose, onExpandFull }) {
 
   useEffect(() => {
     const leave = isProject
-      ? joinProjectRoom(session.token, chat.entity_id)
-      : joinIssueRoom(session.token, chat.entity_id);
+      ? joinProjectRoom(chat.entity_id)
+      : joinIssueRoom(chat.entity_id);
     const socket = getSocket();
     const eventName = isProject ? "projectMessage" : "issueMessage";
     const onMessage = (item) => {
@@ -94,7 +94,7 @@ function MiniChat({ chat, session, onClose, onExpandFull }) {
       socket.off(eventName, onMessage);
       leave();
     };
-  }, [chat.entity_id, isProject, session.token]);
+  }, [chat.entity_id, isProject]);
 
   useEffect(() => {
     if (!collapsed && nearBottomRef.current) {

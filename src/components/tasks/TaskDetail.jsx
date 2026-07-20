@@ -1,6 +1,7 @@
 import { useEffect } from "react";
-import { Button, DatePicker, Form, Input, Modal, Select, Space, Tag } from "antd";
-import dayjs from "dayjs";
+import { Button, Form, Input, Modal, Select, Space, Tag } from "antd";
+import { AppDatePicker } from "../ui/AppDatePicker";
+import { toApiDate, toDayjs } from "../../utils/datetime";
 import {
   DIFFICULTY_COLORS,
   DIFFICULTY_LABELS,
@@ -39,8 +40,8 @@ export function TaskDetail({
       priority: task.priority || "medium",
       difficulty: task.difficulty || "medium",
       assigneeId: task.assignee_id || undefined,
-      startDate: task.start_date ? dayjs(task.start_date) : null,
-      dueDate: task.due_date ? dayjs(task.due_date) : null,
+      startDate: task.start_date ? toDayjs(task.start_date) : null,
+      dueDate: task.due_date ? toDayjs(task.due_date) : null,
     });
   }, [form, open, task]);
 
@@ -51,8 +52,8 @@ export function TaskDetail({
       priority: values.priority,
       difficulty: values.difficulty,
       assigneeId: values.assigneeId || "",
-      startDate: values.startDate ? dayjs(values.startDate).format("YYYY-MM-DD") : "",
-      dueDate: values.dueDate ? dayjs(values.dueDate).format("YYYY-MM-DD") : "",
+      startDate: values.startDate ? toApiDate(values.startDate) : "",
+      dueDate: values.dueDate ? toApiDate(values.dueDate) : "",
     });
   };
 
@@ -116,7 +117,7 @@ export function TaskDetail({
             <Select options={priorityOptions} />
           </Form.Item>
           <Form.Item name="startDate" label="วันเริ่ม">
-            <DatePicker className="w-full" format="DD/MM/YYYY" />
+            <AppDatePicker />
           </Form.Item>
           <Form.Item
             name="dueDate"
@@ -132,7 +133,7 @@ export function TaskDetail({
               }),
             ]}
           >
-            <DatePicker className="w-full" format="DD/MM/YYYY" />
+            <AppDatePicker />
           </Form.Item>
           <Form.Item name="difficulty" label="ความยาก">
             <Select

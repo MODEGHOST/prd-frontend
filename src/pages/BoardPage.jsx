@@ -4,7 +4,6 @@ import {
   Button,
   Card,
   Col,
-  DatePicker,
   Empty,
   Input,
   Modal,
@@ -26,12 +25,13 @@ import {
   PlusOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
-import dayjs from "dayjs";
 import { TaskForm } from "../components/forms/TaskForm";
 import { useIssueDrawer } from "../components/issues/IssueDrawerContext";
 import { TaskDetail } from "../components/tasks/TaskDetail";
+import { AppRangePicker } from "../components/ui/AppDatePicker";
 import { PageHeader } from "../components/ui/PageHeader";
 import { PriorityTag, StatusTag } from "../components/ui/StatusTag";
+import { VirtualList } from "../components/ui/VirtualList";
 import {
   DIFFICULTY_COLORS,
   DIFFICULTY_LABELS,
@@ -40,6 +40,7 @@ import {
 } from "../constants";
 import { boardApi, issuesApi, projectsApi, tasksApi } from "../services/api";
 import { hasPermission } from "../utils/access";
+import { dayjs, formatDate, toApiDate } from "../utils/datetime";
 
 const columnAccent = {
   todo: "border-t-slate-400",
@@ -48,13 +49,80 @@ const columnAccent = {
   done: "border-t-emerald-500",
 };
 
-const { RangePicker } = DatePicker;
-
 const dateRangePresets = [
   { label: "วันนี้", value: [dayjs().startOf("day"), dayjs().endOf("day")] },
   { label: "สัปดาห์นี้", value: [dayjs().startOf("week"), dayjs().endOf("week")] },
   { label: "เดือนนี้", value: [dayjs().startOf("month"), dayjs().endOf("month")] },
 ];
+
+const KANBAN_CARD_ESTIMATE = 168;
+
+function KanbanCard({
+  task,
+  mode,
+  canMove,
+  onOpen,
+  onMoveStatus,
+}) {
+  const currentStatus = mode === "project"
+    ? task.status
+    : (task.board_status || (task.status === "in_progress" ? "doing" : "todo"));
+
+  return (
+    <Card
+      size="small"
+      className="task-card-draggable rounded-xl border border-slate-200 shadow-sm"
+      draggable={canMove}
+      onDragStart={(event) => {
+        event.dataTransfer.setData(mode === "project" ? "task" : "ticket", String(task.id));
+      }}
+      onClick={onOpen}
+    >
+      <Space wrap>
+        <PriorityTag value={task.priority} />
+        {mode === "project" ? (
+          <Tag color={DIFFICULTY_COLORS[task.difficulty || "medium"]}>
+            {DIFFICULTY_LABELS[task.difficulty || "medium"]}
+          </Tag>
+        ) : null}
+        {mode === "project" && task.issue_id ? <Tag color="blue">Ticket</Tag> : null}
+      </Space>
+      <div className="mt-2 text-sm font-medium text-slate-800">{task.title}</div>
+      <div className="mt-1 line-clamp-2 text-xs text-slate-500">
+        {task.description || "ไม่มีรายละเอียด"}
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <Avatar size="small">{task.assignee_name?.slice(0, 1) || "?"}</Avatar>
+        <span className="text-xs text-slate-400">
+          {mode === "ticket"
+            ? (task.project_name || "Ticket ทั่วไป")
+            : (task.due_date
+              ? formatDate(task.due_date)
+              : "ไม่กำหนด")}
+        </span>
+      </div>
+      {canMove ? (
+        <div
+          className="mt-2"
+          onClick={(event) => event.stopPropagation()}
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <Select
+            size="small"
+            className="w-full"
+            value={currentStatus}
+            options={TASK_COLUMNS.map((status) => ({
+              value: status,
+              label: STATUS_LABELS[status],
+            }))}
+            onChange={(status) => onMoveStatus?.(task, status)}
+            aria-label="เปลี่ยนสถานะงาน"
+          />
+        </div>
+      ) : null}
+    </Card>
+  );
+}
 
 export function BoardPage({ user }) {
   const canUseTicketBoard = hasPermission(user, "issues.transition");
@@ -86,11 +154,41 @@ export function BoardPage({ user }) {
   const [overviewRange, setOverviewRange] = useState(null);
   const [overviewSort, setOverviewSort] = useState("updated");
   const [boardQuery, setBoardQuery] = useState("");
+  const [debouncedBoardQuery, setDebouncedBoardQuery] = useState("");
   const [boardStatus, setBoardStatus] = useState();
   const [boardPriority, setBoardPriority] = useState();
   const [boardAssignee, setBoardAssignee] = useState();
   const [boardRange, setBoardRange] = useState(null);
   const [overdueOnly, setOverdueOnly] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedBoardQuery(boardQuery);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [boardQuery]);
+
+  const projectTaskFilters = useMemo(() => ({
+    projectId,
+    limit: 100,
+    q: debouncedBoardQuery.trim() || undefined,
+    status: boardStatus || undefined,
+    priority: boardPriority || undefined,
+    assigneeId: boardAssignee || undefined,
+    dateFrom: boardRange?.[0] ? toApiDate(boardRange[0]) : undefined,
+    dateTo: boardRange?.[1] ? toApiDate(boardRange[1]) : undefined,
+    overdue: overdueOnly ? "true" : undefined,
+  }), [
+    projectId,
+    debouncedBoardQuery,
+    boardStatus,
+    boardPriority,
+    boardAssignee,
+    boardRange,
+    overdueOnly,
+  ]);
+
+  const [columnTotals, setColumnTotals] = useState({});
 
   useEffect(() => {
     if (view !== "overview") return undefined;
@@ -104,8 +202,8 @@ export function BoardPage({ user }) {
           type: overviewType,
           query: overviewQuery.trim() || undefined,
           status: overviewStatus,
-          dateFrom: overviewRange?.[0]?.format("YYYY-MM-DD"),
-          dateTo: overviewRange?.[1]?.format("YYYY-MM-DD"),
+          dateFrom: overviewRange?.[0] ? toApiDate(overviewRange[0]) : undefined,
+          dateTo: overviewRange?.[1] ? toApiDate(overviewRange[1]) : undefined,
           sort: overviewSort,
         })
         .then((page) => {
@@ -152,12 +250,13 @@ export function BoardPage({ user }) {
     let active = true;
     setLoading(true);
     Promise.all([
-      tasksApi.list({ projectId, limit: 500 }),
+      tasksApi.listByColumns(projectTaskFilters),
       projectsApi.get(projectId),
     ])
       .then(([taskData, projectData]) => {
         if (!active) return;
         setTasks(taskData.items);
+        setColumnTotals(taskData.totals || {});
         // ผู้รับผิดชอบงาน = สมาชิกโครงการที่เป็นเจ้าหน้าที่เท่านั้น (ไม่รวม requester / ทั้งระบบ)
         setMemberUsers(
           (projectData.members || []).filter((member) => Boolean(member.is_staff)),
@@ -175,12 +274,13 @@ export function BoardPage({ user }) {
     return () => {
       active = false;
     };
-  }, [projectId, mode, view]);
+  }, [projectId, mode, view, projectTaskFilters]);
 
   const reloadTasks = async () => {
     if (!projectId) return;
-    const taskData = await tasksApi.list({ projectId, limit: 500 });
+    const taskData = await tasksApi.listByColumns(projectTaskFilters);
     setTasks(taskData.items);
+    setColumnTotals(taskData.totals || {});
   };
 
   const move = async (task, status) => {
@@ -188,7 +288,13 @@ export function BoardPage({ user }) {
       ? canManageAllIssues || Boolean(task.issue_participant)
       : canManage || Number(task.assignee_id) === Number(user.id);
     if (!canMove || task.status === status) return;
+    const previousStatus = task.status;
     setTasks((current) => current.map((item) => (item.id === task.id ? { ...item, status } : item)));
+    setColumnTotals((current) => ({
+      ...current,
+      [previousStatus]: Math.max(0, Number(current[previousStatus] || 1) - 1),
+      [status]: Number(current[status] || 0) + 1,
+    }));
     try {
       await tasksApi.update(task.id, { status });
     } catch (error) {
@@ -257,11 +363,11 @@ export function BoardPage({ user }) {
     [mode, tasks, selectedBoardTicket],
   );
   const filteredVisibleItems = useMemo(() => {
+    // Project board filters are applied server-side; keep client filters for ticket mode.
+    if (mode === "project") return visibleItems;
     const query = boardQuery.trim().toLocaleLowerCase("th");
     return visibleItems.filter((item) => {
-      const currentStatus = mode === "project"
-        ? item.status
-        : (item.board_status || (item.status === "in_progress" ? "doing" : "todo"));
+      const currentStatus = item.board_status || (item.status === "in_progress" ? "doing" : "todo");
       if (boardStatus && currentStatus !== boardStatus) return false;
       if (boardPriority && item.priority !== boardPriority) return false;
       if (boardAssignee && Number(item.assignee_id) !== Number(boardAssignee)) return false;
@@ -273,7 +379,9 @@ export function BoardPage({ user }) {
       if (boardRange) {
         if (!itemDate) return false;
         const date = dayjs(itemDate);
-        if (date.isBefore(boardRange[0], "day") || date.isAfter(boardRange[1], "day")) return false;
+        if (date.isBefore(boardRange[0], "day") || date.isAfter(boardRange[1], "day")) {
+          return false;
+        }
       }
       if (overdueOnly) {
         if (!item.due_date || currentStatus === "done" || !dayjs(item.due_date).isBefore(dayjs(), "day")) {
@@ -293,12 +401,29 @@ export function BoardPage({ user }) {
     overdueOnly,
   ]);
   const boardAssigneeOptions = useMemo(() => {
+    if (mode === "project" && memberUsers.length) {
+      return memberUsers.map((member) => ({
+        value: member.id,
+        label: member.name,
+      }));
+    }
     const values = new Map();
     visibleItems.forEach((item) => {
       if (item.assignee_id && item.assignee_name) values.set(item.assignee_id, item.assignee_name);
     });
     return [...values].map(([value, label]) => ({ value, label }));
-  }, [visibleItems]);
+  }, [mode, memberUsers, visibleItems]);
+
+  const columnItems = useMemo(() => {
+    const buckets = Object.fromEntries(TASK_COLUMNS.map((status) => [status, []]));
+    filteredVisibleItems.forEach((item) => {
+      const status = mode === "project"
+        ? item.status
+        : (item.board_status || (item.status === "in_progress" ? "doing" : "todo"));
+      if (buckets[status]) buckets[status].push(item);
+    });
+    return buckets;
+  }, [filteredVisibleItems, mode]);
 
   const openBoard = (item) => {
     setBoardQuery("");
@@ -381,15 +506,15 @@ export function BoardPage({ user }) {
                 { value: "in_progress", label: "Ticket กำลังดำเนินการ" },
               ]}
             />
-            <RangePicker
+            <AppRangePicker
               size="small"
+              className=""
               value={overviewRange}
               onChange={(value) => {
                 setOverviewRange(value);
                 setOverviewPage(1);
               }}
               presets={dateRangePresets}
-              format="DD/MM/YYYY"
               placeholder={["ตั้งแต่วันที่", "ถึงวันที่"]}
             />
             <Select
@@ -479,7 +604,7 @@ export function BoardPage({ user }) {
                     )}
                     <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2">
                       <span className="text-xs text-slate-400">
-                        {item.item_date ? dayjs(item.item_date).format("DD/MM/YYYY") : "ไม่กำหนดวันที่"}
+                        {item.item_date ? formatDate(item.item_date) : "ไม่กำหนดวันที่"}
                       </span>
                       <Button size="small" type="link" className="!h-auto !px-0">เปิดกระดาน</Button>
                     </div>
@@ -585,12 +710,12 @@ export function BoardPage({ user }) {
             placeholder="ผู้รับผิดชอบ"
             options={boardAssigneeOptions}
           />
-          <RangePicker
+          <AppRangePicker
             size="small"
+            className=""
             value={boardRange}
             onChange={setBoardRange}
             presets={dateRangePresets}
-            format="DD/MM/YYYY"
             placeholder={["ตั้งแต่วันที่", "ถึงวันที่"]}
           />
           <Space size={6}>
@@ -619,14 +744,9 @@ export function BoardPage({ user }) {
         <Empty description="ไม่พบรายการที่เลือก" />
       ) : (
         <div className="overflow-x-auto pb-2">
-          <Row gutter={[12, 12]} className="min-w-[980px]">
+          <Row gutter={[12, 12]} className="min-w-[720px] md:min-w-[980px]">
             {TASK_COLUMNS.map((column) => {
-              const columnTasks = filteredVisibleItems.filter((item) => {
-                if (mode === "project") return item.status === column;
-                const boardStatus = item.board_status
-                  || (item.status === "in_progress" ? "doing" : "todo");
-                return boardStatus === column;
-              });
+              const columnTasks = columnItems[column] || [];
               return (
                 <Col span={6} key={column}>
                   <Card
@@ -636,7 +756,9 @@ export function BoardPage({ user }) {
                       <div className="flex items-center justify-between text-sm">
                         <span className="font-semibold text-slate-700">{STATUS_LABELS[column]}</span>
                         <span className="rounded-full bg-white px-2 py-0.5 text-xs text-slate-500">
-                          {columnTasks.length}
+                          {Number.isFinite(columnTotals[column])
+                            ? columnTotals[column]
+                            : columnTasks.length}
                         </span>
                       </div>
                     }
@@ -653,60 +775,54 @@ export function BoardPage({ user }) {
                       }
                     }}
                   >
-                    <div className="space-y-2.5">
-                      {columnTasks.map((task) => {
-                        const canMove = mode === "ticket"
-                          ? Boolean(task.assignee_id) && (
-                            canManageAllIssues
-                            || Boolean(task.issue_participant)
-                          )
-                          : task.issue_id
-                            ? canManageAllIssues || Boolean(task.issue_participant)
-                            : canManage || Number(task.assignee_id) === Number(user.id);
-                        return (
-                          <Card
-                            key={`${mode}-${task.id}`}
-                            size="small"
-                            className="task-card-draggable rounded-xl border border-slate-200 shadow-sm"
-                            draggable={canMove}
-                            onDragStart={(event) => {
-                              event.dataTransfer.setData(mode === "project" ? "task" : "ticket", String(task.id));
-                            }}
-                            onClick={() => {
-                              if (mode === "ticket") {
-                                openIssue(task);
-                              } else {
-                                setSelectedTask(task);
-                              }
-                            }}
-                          >
-                            <Space wrap>
-                              <PriorityTag value={task.priority} />
-                              {mode === "project" ? (
-                                <Tag color={DIFFICULTY_COLORS[task.difficulty || "medium"]}>
-                                  {DIFFICULTY_LABELS[task.difficulty || "medium"]}
-                                </Tag>
-                              ) : null}
-                              {mode === "project" && task.issue_id ? <Tag color="blue">Ticket</Tag> : null}
-                            </Space>
-                            <div className="mt-2 text-sm font-medium text-slate-800">{task.title}</div>
-                            <div className="mt-1 line-clamp-2 text-xs text-slate-500">
-                              {task.description || "ไม่มีรายละเอียด"}
-                            </div>
-                            <div className="mt-3 flex items-center justify-between">
-                              <Avatar size="small">{task.assignee_name?.slice(0, 1) || "?"}</Avatar>
-                              <span className="text-xs text-slate-400">
-                                {mode === "ticket"
-                                  ? (task.project_name || "Ticket ทั่วไป")
-                                  : (task.due_date
-                                    ? String(task.due_date).slice(0, 10)
-                                    : "ไม่กำหนด")}
-                              </span>
-                            </div>
-                          </Card>
-                        );
-                      })}
-                    </div>
+                    {columnTasks.length ? (
+                      <>
+                        <VirtualList
+                          items={columnTasks}
+                          estimateSize={KANBAN_CARD_ESTIMATE}
+                          overscan={6}
+                          className="kanban-column-list"
+                          getItemKey={(task) => `${mode}-${task.id}`}
+                        >
+                          {(task) => {
+                            const canMove = mode === "ticket"
+                              ? Boolean(task.assignee_id) && (
+                                canManageAllIssues
+                                || Boolean(task.issue_participant)
+                              )
+                              : task.issue_id
+                                ? canManageAllIssues || Boolean(task.issue_participant)
+                                : canManage || Number(task.assignee_id) === Number(user.id);
+                            return (
+                              <KanbanCard
+                                task={task}
+                                mode={mode}
+                                canMove={canMove}
+                                onMoveStatus={(item, status) => {
+                                  if (mode === "ticket") moveTicket(item, status);
+                                  else move(item, status);
+                                }}
+                                onOpen={() => {
+                                  if (mode === "ticket") {
+                                    openIssue(task);
+                                  } else {
+                                    setSelectedTask(task);
+                                  }
+                                }}
+                              />
+                            );
+                          }}
+                        </VirtualList>
+                        {Number(columnTotals[column] || 0) > columnTasks.length ? (
+                          <div className="mt-2 text-center text-[11px] text-slate-400">
+                            แสดง {columnTasks.length} จาก {columnTotals[column]} งานในคอลัมน์นี้
+                            (ใช้ตัวกรองเพื่อหาเพิ่ม)
+                          </div>
+                        ) : null}
+                      </>
+                    ) : (
+                      <div className="py-6 text-center text-xs text-slate-400">ไม่มีงานในสถานะนี้</div>
+                    )}
                   </Card>
                 </Col>
               );

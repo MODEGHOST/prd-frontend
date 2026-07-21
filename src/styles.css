@@ -74,7 +74,7 @@ body {
 }
 
 .kanban-column-list .virtual-list-item + .virtual-list-item {
-  margin-top: 0.625rem;
+  margin-top: 0.5rem;
 }
 
 .task-card-draggable {
@@ -83,6 +83,18 @@ body {
 
 .task-card-draggable:active {
   cursor: grabbing;
+}
+
+.kanban-task-card.ant-card {
+  box-shadow: none;
+}
+
+.kanban-task-card .kanban-meta-tag.ant-tag {
+  margin-inline-end: 0;
+  padding: 0 6px;
+  font-size: 10px;
+  line-height: 18px;
+  border-radius: 4px;
 }
 
 .issue-row:hover {
@@ -108,7 +120,7 @@ body {
 .project-plan-gantt .gantt-container {
   width: 100% !important;
   max-height: none !important;
-  min-height: 180px !important;
+  min-height: 320px !important;
   border-radius: 0;
   overflow-x: auto !important;
   overflow-y: visible !important;

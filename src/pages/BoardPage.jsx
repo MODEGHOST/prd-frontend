@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   Avatar,
   Button,
   Card,
@@ -30,11 +31,9 @@ import { useIssueDrawer } from "../components/issues/IssueDrawerContext";
 import { TaskDetail } from "../components/tasks/TaskDetail";
 import { AppRangePicker } from "../components/ui/AppDatePicker";
 import { PageHeader } from "../components/ui/PageHeader";
-import { PriorityTag, StatusTag } from "../components/ui/StatusTag";
+import { DifficultyTag, PriorityTag, StatusTag } from "../components/ui/StatusTag";
 import { VirtualList } from "../components/ui/VirtualList";
 import {
-  DIFFICULTY_COLORS,
-  DIFFICULTY_LABELS,
   STATUS_LABELS,
   TASK_COLUMNS,
 } from "../constants";
@@ -55,55 +54,78 @@ const dateRangePresets = [
   { label: "เดือนนี้", value: [dayjs().startOf("month"), dayjs().endOf("month")] },
 ];
 
-const KANBAN_CARD_ESTIMATE = 168;
+const KANBAN_CARD_ESTIMATE = 128;
 
 function KanbanCard({
   task,
   mode,
   canMove,
+  lockHint,
   onOpen,
   onMoveStatus,
 }) {
   const currentStatus = mode === "project"
     ? task.status
     : (task.board_status || (task.status === "in_progress" ? "doing" : "todo"));
+  const metaLabel = mode === "ticket"
+    ? (task.project_name || "Ticket ทั่วไป")
+    : (task.due_date ? formatDate(task.due_date) : "ไม่กำหนด");
 
   return (
     <Card
       size="small"
-      className="task-card-draggable rounded-xl border border-slate-200 shadow-sm"
+      className={`task-card-draggable kanban-task-card rounded-lg border border-slate-200 ${canMove ? "" : "opacity-95"}`}
+      styles={{ body: { padding: "8px 10px" } }}
       draggable={canMove}
       onDragStart={(event) => {
+        if (!canMove) {
+          event.preventDefault();
+          return;
+        }
         event.dataTransfer.setData(mode === "project" ? "task" : "ticket", String(task.id));
       }}
       onClick={onOpen}
     >
-      <Space wrap>
-        <PriorityTag value={task.priority} />
-        {mode === "project" ? (
-          <Tag color={DIFFICULTY_COLORS[task.difficulty || "medium"]}>
-            {DIFFICULTY_LABELS[task.difficulty || "medium"]}
+      <div className="flex items-start justify-between gap-1.5">
+        <div className="min-w-0 flex-1 text-[13px] font-semibold leading-snug text-slate-800 line-clamp-2">
+          {task.title}
+        </div>
+        {mode === "project" && task.issue_id ? (
+          <Tag color="blue" className="m-0 shrink-0 !px-1.5 !py-0 !text-[10px] !leading-5">
+            Ticket
           </Tag>
         ) : null}
-        {mode === "project" && task.issue_id ? <Tag color="blue">Ticket</Tag> : null}
-      </Space>
-      <div className="mt-2 text-sm font-medium text-slate-800">{task.title}</div>
-      <div className="mt-1 line-clamp-2 text-xs text-slate-500">
-        {task.description || "ไม่มีรายละเอียด"}
       </div>
-      <div className="mt-3 flex items-center justify-between gap-2">
-        <Avatar size="small">{task.assignee_name?.slice(0, 1) || "?"}</Avatar>
-        <span className="text-xs text-slate-400">
-          {mode === "ticket"
-            ? (task.project_name || "Ticket ทั่วไป")
-            : (task.due_date
-              ? formatDate(task.due_date)
-              : "ไม่กำหนด")}
-        </span>
+
+      {task.description ? (
+        <div className="mt-0.5 line-clamp-1 text-[11px] leading-snug text-slate-500">
+          {task.description}
+        </div>
+      ) : null}
+
+      <div className="mt-1.5 flex flex-wrap items-center gap-1">
+        <PriorityTag value={task.priority} labeled className="kanban-meta-tag" />
+        {mode === "project" ? (
+          <DifficultyTag value={task.difficulty || "medium"} labeled className="kanban-meta-tag" />
+        ) : null}
       </div>
+
+      {lockHint ? (
+        <div className="mt-1 text-[10px] leading-snug text-amber-700">{lockHint}</div>
+      ) : null}
+
+      <div className="mt-1.5 flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <Avatar size={20} className="shrink-0 text-[10px]">
+            {task.assignee_name?.slice(0, 1) || "?"}
+          </Avatar>
+          <span className="truncate text-[11px] text-slate-400">{metaLabel}</span>
+        </div>
+      </div>
+
       {canMove ? (
         <div
-          className="mt-2"
+          className="mt-1.5"
           onClick={(event) => event.stopPropagation()}
           onMouseDown={(event) => event.stopPropagation()}
         >
@@ -119,7 +141,11 @@ function KanbanCard({
             aria-label="เปลี่ยนสถานะงาน"
           />
         </div>
-      ) : null}
+      ) : (
+        <div className="mt-1.5 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-500">
+          {STATUS_LABELS[currentStatus] || currentStatus}
+        </div>
+      )}
     </Card>
   );
 }
@@ -139,6 +165,8 @@ export function BoardPage({ user }) {
   const [memberUsers, setMemberUsers] = useState([]);
   const [canManage, setCanManage] = useState(false);
   const [canCreateTasks, setCanCreateTasks] = useState(false);
+  const [boardLocked, setBoardLocked] = useState(false);
+  const [openTaskCount, setOpenTaskCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [overviewItems, setOverviewItems] = useState([]);
   const [overviewTotal, setOverviewTotal] = useState(0);
@@ -263,6 +291,11 @@ export function BoardPage({ user }) {
         );
         setCanManage(Boolean(projectData.permissions?.canManage));
         setCanCreateTasks(Boolean(projectData.permissions?.canCreateTasks));
+        setBoardLocked(Boolean(
+          projectData.permissions?.boardLocked
+          || projectData.project?.board_locked,
+        ));
+        setOpenTaskCount(Number(projectData.project?.open_task_count || 0));
       })
       .catch((error) => {
         if (active) message.error(error.message);
@@ -278,16 +311,39 @@ export function BoardPage({ user }) {
 
   const reloadTasks = async () => {
     if (!projectId) return;
-    const taskData = await tasksApi.listByColumns(projectTaskFilters);
+    const [taskData, projectData] = await Promise.all([
+      tasksApi.listByColumns(projectTaskFilters),
+      projectsApi.get(projectId),
+    ]);
     setTasks(taskData.items);
     setColumnTotals(taskData.totals || {});
+    setCanCreateTasks(Boolean(projectData.permissions?.canCreateTasks));
+    setBoardLocked(Boolean(
+      projectData.permissions?.boardLocked
+      || projectData.project?.board_locked,
+    ));
+    setOpenTaskCount(Number(projectData.project?.open_task_count || 0));
   };
 
   const move = async (task, status) => {
-    const canMove = task.issue_id
+    if (boardLocked) {
+      message.warning("งานทั้งหมดเสร็จสิ้นแล้ว ไม่สามารถย้ายงานได้อีก");
+      return;
+    }
+    const permissionOk = task.issue_id
       ? canManageAllIssues || Boolean(task.issue_participant)
       : canManage || Number(task.assignee_id) === Number(user.id);
-    if (!canMove || task.status === status) return;
+    if (!permissionOk || task.status === status) return;
+    if (task.issue_id) {
+      const incompleteSiblings = Math.max(
+        0,
+        openTaskCount - (task.status !== "done" ? 1 : 0),
+      );
+      if (incompleteSiblings > 0) {
+        message.warning("ยังมีงานอื่นค้างอยู่ — ต้องเคลียร์งานให้หมดก่อน จึงจะขยับการ์ด Ticket ได้");
+        return;
+      }
+    }
     const previousStatus = task.status;
     setTasks((current) => current.map((item) => (item.id === task.id ? { ...item, status } : item)));
     setColumnTotals((current) => ({
@@ -297,6 +353,19 @@ export function BoardPage({ user }) {
     }));
     try {
       await tasksApi.update(task.id, { status });
+      if (task.issue_id && status === "done") {
+        setBoardLocked(true);
+        setOpenTaskCount(0);
+        setCanCreateTasks(false);
+        message.success("เสร็จสิ้นงานทั้งหมดแล้ว กระดานถูกล็อก");
+      } else if (previousStatus === "done" || status === "done" || task.status !== "done") {
+        setOpenTaskCount((current) => {
+          let next = current;
+          if (previousStatus !== "done" && status === "done") next = Math.max(0, next - 1);
+          if (previousStatus === "done" && status !== "done") next += 1;
+          return next;
+        });
+      }
     } catch (error) {
       message.error(error.message);
       await reloadTasks();
@@ -324,6 +393,10 @@ export function BoardPage({ user }) {
   };
 
   const create = async (values) => {
+    if (boardLocked) {
+      message.warning("งานทั้งหมดเสร็จสิ้นแล้ว ไม่สามารถเพิ่มงานได้อีก");
+      return;
+    }
     setSaving(true);
     try {
       await tasksApi.create({ ...values, projectId });
@@ -340,6 +413,10 @@ export function BoardPage({ user }) {
 
   const saveTaskDetail = async (values) => {
     if (!selectedTask) return;
+    if (boardLocked) {
+      message.warning("งานทั้งหมดเสร็จสิ้นแล้ว ไม่สามารถแก้ไขได้อีก");
+      return;
+    }
     setSavingDetail(true);
     try {
       await tasksApi.update(selectedTask.id, values);
@@ -653,7 +730,7 @@ export function BoardPage({ user }) {
             <Button icon={<ArrowLeftOutlined />} onClick={() => setView("overview")}>
               กลับหน้ารวม
             </Button>
-            {mode === "project" && canCreateTasks ? (
+            {mode === "project" && canCreateTasks && !boardLocked ? (
               <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)} disabled={!projectId}>
                 เพิ่มงาน
               </Button>
@@ -662,7 +739,16 @@ export function BoardPage({ user }) {
         }
       />
 
-      <Card className="mb-4 rounded-xl shadow-sm" styles={{ body: { padding: 12 } }}>
+      {mode === "project" && boardLocked ? (
+        <Alert
+          className="mb-4"
+          type="success"
+          showIcon
+          message="งานทั้งหมดเสร็จสิ้นแล้ว"
+          description="กระดานถูกล็อก ไม่สามารถเพิ่ม ย้าย หรือแก้ไขงานได้อีก"
+        />
+      ) : null}
+      <Card className="mb-8 rounded-xl shadow-sm" styles={{ body: { padding: 12 } }}>
         <div className="flex flex-wrap items-center gap-2">
           <Input
             allowClear
@@ -785,7 +871,7 @@ export function BoardPage({ user }) {
                           getItemKey={(task) => `${mode}-${task.id}`}
                         >
                           {(task) => {
-                            const canMove = mode === "ticket"
+                            const permissionOk = mode === "ticket"
                               ? Boolean(task.assignee_id) && (
                                 canManageAllIssues
                                 || Boolean(task.issue_participant)
@@ -793,11 +879,25 @@ export function BoardPage({ user }) {
                               : task.issue_id
                                 ? canManageAllIssues || Boolean(task.issue_participant)
                                 : canManage || Number(task.assignee_id) === Number(user.id);
+                            const ticketBlockedByOpenWork = mode === "project"
+                              && Boolean(task.issue_id)
+                              && !boardLocked
+                              && Math.max(0, openTaskCount - (task.status !== "done" ? 1 : 0)) > 0;
+                            const canMove = permissionOk
+                              && !(mode === "project" && boardLocked)
+                              && !ticketBlockedByOpenWork;
+                            let lockHint = "";
+                            if (mode === "project" && boardLocked) {
+                              lockHint = "งานจบแล้ว — ย้ายไม่ได้";
+                            } else if (ticketBlockedByOpenWork) {
+                              lockHint = "ต้องเคลียร์งานอื่นให้หมดก่อน จึงขยับการ์ด Ticket ได้";
+                            }
                             return (
                               <KanbanCard
                                 task={task}
                                 mode={mode}
                                 canMove={canMove}
+                                lockHint={lockHint}
                                 onMoveStatus={(item, status) => {
                                   if (mode === "ticket") moveTicket(item, status);
                                   else move(item, status);
@@ -847,16 +947,21 @@ export function BoardPage({ user }) {
         open={Boolean(selectedTask)}
         users={memberUsers}
         canEdit={Boolean(
-          selectedTask && (
+          selectedTask
+          && !boardLocked
+          && (
             selectedTask.issue_id
               ? canManageAllIssues || Boolean(selectedTask.issue_participant)
               : canManage || Number(selectedTask.assignee_id) === Number(user.id)
           )
         )}
-        canChangeAssignee={Boolean(canManage || canManageAllTasks)}
+        canChangeAssignee={Boolean(!boardLocked && (canManage || canManageAllTasks))}
         loading={savingDetail}
         onClose={() => setSelectedTask(null)}
         onSave={saveTaskDetail}
+        readOnlyHint={boardLocked
+          ? "งานทั้งหมดเสร็จสิ้นแล้ว — เปิดดูได้อย่างเดียว แก้ไขไม่ได้"
+          : undefined}
       />
     </div>
   );

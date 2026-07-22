@@ -17,10 +17,35 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background: #f3f5f9;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 #root {
   min-height: 100vh;
+}
+
+/*
+ * iOS Safari auto-zooms focused controls under 16px.
+ * Keep inputs/selects at 16px on touch devices so dropdowns don't zoom the page.
+ */
+@media (hover: none) and (pointer: coarse) {
+  input,
+  textarea,
+  select,
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-input-affix-wrapper > input.ant-input,
+  .ant-input-number-input,
+  .ant-select-selector,
+  .ant-select-selection-search-input,
+  .ant-select-selection-item,
+  .ant-select-selection-placeholder,
+  .ant-picker-input > input,
+  .ant-mentions,
+  .ant-mentions textarea {
+    font-size: 16px !important;
+  }
 }
 
 .ant-menu-inline .ant-menu-item {

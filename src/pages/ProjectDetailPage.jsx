@@ -34,6 +34,7 @@ import {
 } from "../constants";
 import { projectsApi, tasksApi, usersApi } from "../services/api";
 import { getSocket, joinProjectRoom } from "../services/socket";
+import { upsertById, mergeTaskPatch } from "../utils/realtimeMerge";
 import { hasPermission } from "../utils/access";
 import {
   dayjs,
@@ -1067,11 +1068,13 @@ export function ProjectDetailPage({ session }) {
   }, [activeTab, projectId, messagesLoaded]);
 
   useEffect(() => {
-    if (!session?.user || !projectId || error || activeTab !== "chat") return undefined;
+    if (!session?.user || !projectId || error) return undefined;
 
     const leave = joinProjectRoom(projectId);
     const socket = getSocket();
+
     const onMessage = (item) => {
+      if (activeTab !== "chat") return;
       if (Number(item.project_id) !== Number(projectId)) return;
       setMessages((current) => {
         if (current.some((msg) => msg.id === item.id)) return current;
@@ -1080,10 +1083,31 @@ export function ProjectDetailPage({ session }) {
         return next;
       });
     };
+
+    const onWeeklyPlanChanged = (payload) => {
+      if (Number(payload?.projectId) !== Number(projectId)) return;
+      const plan = payload?.plan;
+      if (!plan) return;
+      setWeeklyPlans((current) => upsertById(current, plan));
+      setWeeklyPlansLoaded(true);
+    };
+
+    const onTaskChanged = (payload) => {
+      if (Number(payload?.projectId) !== Number(projectId)) return;
+      const task = payload?.task;
+      if (!task) return;
+      setTasks((current) => mergeTaskPatch(current, task, setTaskColumnTotals));
+      setTasksLoaded(true);
+    };
+
     socket.on("projectMessage", onMessage);
+    socket.on("weeklyPlan:changed", onWeeklyPlanChanged);
+    socket.on("task:changed", onTaskChanged);
 
     return () => {
       socket.off("projectMessage", onMessage);
+      socket.off("weeklyPlan:changed", onWeeklyPlanChanged);
+      socket.off("task:changed", onTaskChanged);
       leave();
     };
   }, [session?.user, projectId, error, activeTab]);

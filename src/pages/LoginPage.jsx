@@ -331,8 +331,10 @@ export function LoginPage({ onLogin }) {
           {mode === "login" ? (
             <Form
               key={invitation?.email || "login"}
+              name="ipms-login"
               layout="vertical"
               onFinish={login}
+              autoComplete="on"
             >
               <Form.Item
                 name="username"
@@ -340,9 +342,14 @@ export function LoginPage({ onLogin }) {
                 rules={[{ required: true, message: "กรุณากรอกชื่อผู้ใช้" }]}
               >
                 <Input
+                  id="login-username"
+                  name="username"
                   prefix={<UserOutlined />}
                   size="large"
                   autoComplete="username"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                 />
               </Form.Item>
               <Form.Item
@@ -351,6 +358,8 @@ export function LoginPage({ onLogin }) {
                 rules={[{ required: true, message: "กรุณากรอกรหัสผ่าน" }]}
               >
                 <Input.Password
+                  id="login-password"
+                  name="password"
                   prefix={<LockOutlined />}
                   size="large"
                   autoComplete="current-password"

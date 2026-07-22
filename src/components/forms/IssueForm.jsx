@@ -50,7 +50,7 @@ export function IssueForm({
           <Select
             options={[
               { value: "bug", label: "แจ้งบั๊ก" },
-              { value: "feature", label: "เสนอฟีเจอร์" },
+              { value: "feature", label: "เสนอระบบใหม่" },
               { value: "support", label: "ขอความช่วยเหลือ" },
             ]}
           />

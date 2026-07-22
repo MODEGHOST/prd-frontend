@@ -32,6 +32,9 @@ const iconMap = {
   access: <SafetyCertificateOutlined />,
 };
 
+/** Fixed sidebar only on large desktops; iPad/tablet keep the slide-out drawer like iPhone. */
+const DESKTOP_SIDEBAR_MIN_WIDTH = 1536;
+
 function SidebarContent({ session, selectedKey, menuItems, onLogout, showBrandText = true }) {
   return (
     <div className="app-sidebar flex h-full flex-col bg-slate-950 text-white">
@@ -113,7 +116,7 @@ export function AppLayout({
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(() =>
-    typeof window !== "undefined" ? window.innerWidth >= 1024 : true,
+    typeof window !== "undefined" ? window.innerWidth >= DESKTOP_SIDEBAR_MIN_WIDTH : true,
   );
   const location = useLocation();
   const navigate = useNavigate();
@@ -167,7 +170,7 @@ export function AppLayout({
     },
   ];
   useEffect(() => {
-    const onResize = () => setIsDesktop(window.innerWidth >= 1024);
+    const onResize = () => setIsDesktop(window.innerWidth >= DESKTOP_SIDEBAR_MIN_WIDTH);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
@@ -202,7 +205,7 @@ export function AppLayout({
 
   return (
     <div className="min-h-screen bg-[#f5f6f8]">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] border-r border-slate-800 bg-slate-950 lg:block">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] border-r border-slate-800 bg-slate-950 2xl:block">
         <SidebarContent
           session={session}
           selectedKey={selectedKey}
@@ -227,7 +230,7 @@ export function AppLayout({
         />
       </Drawer>
 
-      <div className="lg:pl-[248px]">
+      <div className="2xl:pl-[248px]">
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-slate-200 bg-white/95 px-4 shadow-[inset_0_2px_0_#b91c1c] backdrop-blur md:px-6">
           <div className="flex items-center gap-3">
             {!isDesktop ? (
@@ -247,7 +250,6 @@ export function AppLayout({
           <div className="flex items-center gap-3">
             {(session.companies || []).length > 1 ? (
               <Select
-                size="small"
                 className="min-w-36 max-w-44 sm:min-w-44"
                 value={session.user.companyId}
                 loading={switchingCompany}

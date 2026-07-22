@@ -238,9 +238,23 @@ export function IssueDetail({ issue, user, users: usersProp, open, onClose, onCh
           : [...current, item]
       ));
     };
+    const onIssueChanged = (payload) => {
+      const next = payload?.issue;
+      if (!next || Number(next.id) !== Number(issue.id)) return;
+      setDetail((current) => (current ? {
+        ...current,
+        ...next,
+        // Preserve nested detail-only fields that list patches do not carry.
+        members: current.members,
+        activities: current.activities,
+        permissions: current.permissions,
+      } : current));
+    };
     socket.on("issueMessage", onMessage);
+    socket.on("issue:changed", onIssueChanged);
     return () => {
       socket.off("issueMessage", onMessage);
+      socket.off("issue:changed", onIssueChanged);
       leave();
     };
   }, [open, issue?.id]);

@@ -38,8 +38,14 @@ import {
   TASK_COLUMNS,
 } from "../constants";
 import { boardApi, issuesApi, projectsApi, tasksApi } from "../services/api";
+import { getSocket, joinIssueRoom, joinProjectRoom } from "../services/socket";
 import { hasPermission } from "../utils/access";
 import { dayjs, formatDate, toApiDate } from "../utils/datetime";
+import {
+  applyBoardGate,
+  mergeTaskPatch,
+  upsertById,
+} from "../utils/realtimeMerge";
 
 const columnAccent = {
   todo: "border-t-slate-400",
@@ -309,6 +315,96 @@ export function BoardPage({ user }) {
     };
   }, [projectId, mode, view, projectTaskFilters]);
 
+  useEffect(() => {
+    if (view !== "board") return undefined;
+
+    const socket = getSocket();
+    const leaveFns = [];
+
+    if (mode === "project" && projectId) {
+      leaveFns.push(joinProjectRoom(projectId));
+    }
+    if (mode === "ticket" && ticketId) {
+      leaveFns.push(joinIssueRoom(ticketId));
+    }
+
+    const onTaskChanged = (payload) => {
+      if (mode !== "project" || !projectId) return;
+      if (Number(payload?.projectId) !== Number(projectId)) return;
+      const task = payload?.task;
+      if (!task) return;
+
+      // Respect active board filters: drop rows that no longer match.
+      const matchesFilters = () => {
+        if (boardStatus && task.status !== boardStatus) return false;
+        if (boardPriority && task.priority !== boardPriority) return false;
+        if (boardAssignee && Number(task.assignee_id) !== Number(boardAssignee)) return false;
+        const query = debouncedBoardQuery.trim().toLocaleLowerCase("th");
+        if (query) {
+          const hay = `${task.title || ""} ${task.description || ""}`.toLocaleLowerCase("th");
+          if (!hay.includes(query)) return false;
+        }
+        if (overdueOnly) {
+          if (!task.due_date || task.status === "done" || !dayjs(task.due_date).isBefore(dayjs(), "day")) {
+            return false;
+          }
+        }
+        return true;
+      };
+
+      setTasks((current) => {
+        const exists = current.some((row) => Number(row.id) === Number(task.id));
+        if (!matchesFilters()) {
+          if (!exists) return current;
+          const previous = current.find((row) => Number(row.id) === Number(task.id));
+          if (previous && setColumnTotals) {
+            setColumnTotals((totals) => ({
+              ...totals,
+              [previous.status]: Math.max(0, Number(totals[previous.status] || 1) - 1),
+            }));
+          }
+          return current.filter((row) => Number(row.id) !== Number(task.id));
+        }
+        return mergeTaskPatch(current, task, setColumnTotals);
+      });
+      applyBoardGate(
+        { setBoardLocked, setOpenTaskCount, setCanCreateTasks },
+        payload.boardGate,
+      );
+    };
+
+    const onIssueChanged = (payload) => {
+      const issue = payload?.issue;
+      if (!issue) return;
+      if (mode === "ticket" && Number(ticketId) === Number(issue.id)) {
+        setTickets((current) => upsertById(current, issue));
+      }
+      if (mode === "project" && payload?.linkedTask
+          && Number(payload.linkedTask.project_id) === Number(projectId)) {
+        setTasks((current) => mergeTaskPatch(current, payload.linkedTask, setColumnTotals));
+      }
+    };
+
+    socket.on("task:changed", onTaskChanged);
+    socket.on("issue:changed", onIssueChanged);
+
+    return () => {
+      socket.off("task:changed", onTaskChanged);
+      socket.off("issue:changed", onIssueChanged);
+      leaveFns.forEach((leave) => leave());
+    };
+  }, [
+    view,
+    mode,
+    projectId,
+    ticketId,
+    boardStatus,
+    boardPriority,
+    boardAssignee,
+    debouncedBoardQuery,
+    overdueOnly,
+  ]);
+
   const reloadTasks = async () => {
     if (!projectId) return;
     const [taskData, projectData] = await Promise.all([
@@ -388,7 +484,7 @@ export function BoardPage({ user }) {
       }
     } catch (error) {
       message.error(error.message);
-      setTickets([previousTicket]);
+      setTickets((current) => upsertById(current, previousTicket));
     }
   };
 
@@ -748,7 +844,7 @@ export function BoardPage({ user }) {
           description="กระดานถูกล็อก ไม่สามารถเพิ่ม ย้าย หรือแก้ไขงานได้อีก"
         />
       ) : null}
-      <Card className="mb-8 rounded-xl shadow-sm" styles={{ body: { padding: 12 } }}>
+      <Card className="mb-10 rounded-xl shadow-sm" styles={{ body: { padding: 16 } }}>
         <div className="flex flex-wrap items-center gap-2">
           <Input
             allowClear
@@ -829,8 +925,8 @@ export function BoardPage({ user }) {
       {!selectedWorkspace ? (
         <Empty description="ไม่พบรายการที่เลือก" />
       ) : (
-        <div className="overflow-x-auto pb-2">
-          <Row gutter={[12, 12]} className="min-w-[720px] md:min-w-[980px]">
+        <div className="mt-2 overflow-x-auto pb-2">
+          <Row gutter={[16, 16]} className="min-w-[720px] md:min-w-[980px]">
             {TASK_COLUMNS.map((column) => {
               const columnTasks = columnItems[column] || [];
               return (

@@ -8,7 +8,9 @@ import { PageHeader } from "../components/ui/PageHeader";
 import { PriorityTag, StatusTag } from "../components/ui/StatusTag";
 import { ISSUE_STATUS_FILTER_OPTIONS } from "../constants";
 import { issuesApi, projectsApi } from "../services/api";
+import { getSocket } from "../services/socket";
 import { hasPermission, isRequesterPersona } from "../utils/access";
+import { upsertById } from "../utils/realtimeMerge";
 
 const PAGE_SIZE = 6;
 
@@ -84,6 +86,37 @@ export function IssuesPage({ user }) {
       active = false;
     };
   }, [revision, page, requesterView, statusFilter]);
+
+  useEffect(() => {
+    const socket = getSocket();
+    const onIssueChanged = (payload) => {
+      const issue = payload?.issue;
+      if (!issue?.id) return;
+
+      let createdVisible = false;
+      setIssues((current) => {
+        const exists = current.some((row) => Number(row.id) === Number(issue.id));
+
+        if (statusFilter && issue.status !== statusFilter) {
+          return exists
+            ? current.filter((row) => Number(row.id) !== Number(issue.id))
+            : current;
+        }
+
+        if (exists) return upsertById(current, issue);
+        if (payload.op === "create" && page === 1) {
+          createdVisible = true;
+          return upsertById(current, issue, { prepend: true }).slice(0, PAGE_SIZE);
+        }
+        return current;
+      });
+      if (createdVisible) setTotal((total) => total + 1);
+    };
+    socket.on("issue:changed", onIssueChanged);
+    return () => {
+      socket.off("issue:changed", onIssueChanged);
+    };
+  }, [page, statusFilter]);
 
   useEffect(() => {
     if (!open || projects.length) return undefined;

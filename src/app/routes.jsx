@@ -17,6 +17,8 @@ const MyTasksPage = lazy(() =>
   import("../pages/MyTasksPage").then((module) => ({ default: module.MyTasksPage })));
 const AccessAdminPage = lazy(() =>
   import("../pages/AccessAdminPage").then((module) => ({ default: module.AccessAdminPage })));
+const ProfilePage = lazy(() =>
+  import("../pages/ProfilePage").then((module) => ({ default: module.ProfilePage })));
 
 function canAccessAdmin(session) {
   return ["admin"].includes(session.user?.role)
@@ -25,7 +27,7 @@ function canAccessAdmin(session) {
     || hasPermission(session.user, "audit.read");
 }
 
-export function AppRoutes({ session }) {
+export function AppRoutes({ session, onSessionUpdate }) {
   const canViewProjects = hasPermission(session.user, "projects.read_all")
     || hasPermission(session.user, "projects.create")
     || hasPermission(session.user, "projects.update");
@@ -40,6 +42,9 @@ export function AppRoutes({ session }) {
     >
       <Routes>
         <Route path="/" element={<DashboardPage user={session.user} />} />
+        <Route path="/profile" element={
+          <ProfilePage session={session} onSessionUpdate={onSessionUpdate} />
+        } />
         <Route path="/projects" element={!canViewProjects
           ? <Navigate to="/issues" replace />
           : <ProjectsPage user={session.user} />} />

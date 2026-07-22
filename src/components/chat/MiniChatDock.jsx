@@ -26,6 +26,7 @@ function MiniChat({ chat, session, onClose, onExpandFull }) {
   const [collapsed, setCollapsed] = useState(false);
   const [showLatestButton, setShowLatestButton] = useState(false);
   const [headerTitle, setHeaderTitle] = useState(chat.title || "แชท");
+  const [chatLocked, setChatLocked] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
   const [highlightedId, setHighlightedId] = useState(null);
   const scrollRef = useRef(null);
@@ -42,8 +43,20 @@ function MiniChat({ chat, session, onClose, onExpandFull }) {
       ? projectsApi.get(chat.entity_id).then((data) => {
           const name = data?.project?.name || data?.name;
           if (name) setHeaderTitle(name);
+          const locked = Boolean(
+            data?.permissions?.boardLocked
+            || data?.project?.board_locked
+            || data?.project?.status === "completed"
+            || (
+              Number(data?.project?.work_total || 0) > 0
+              && Number(data?.project?.work_done || 0) >= Number(data?.project?.work_total || 0)
+            ),
+          );
+          setChatLocked(locked);
+          if (locked) setReplyingTo(null);
         })
       : issuesApi.get(chat.entity_id).then((data) => {
+          setChatLocked(false);
           if (data?.ticket_no || data?.title) {
             setHeaderTitle(
               [data.ticket_no, data.title].filter(Boolean).join(" · "),
@@ -151,6 +164,10 @@ function MiniChat({ chat, session, onClose, onExpandFull }) {
   }, [chat.entity_id, isProject]);
 
   const send = async (body, files, replyToId) => {
+    if (chatLocked) {
+      message.warning("งานทั้งหมดเสร็จสิ้นแล้ว ไม่สามารถส่งข้อความในแชททีมได้อีก");
+      return false;
+    }
     if ((!body && !files.length) || sending) return false;
     setSending(true);
     try {
@@ -268,7 +285,7 @@ function MiniChat({ chat, session, onClose, onExpandFull }) {
                             timeline.compactSender ? "mt-0.5" : "mt-2"
                           } ${Number(highlightedId) === Number(item.id) ? "rounded-xl bg-amber-100 ring-2 ring-amber-300" : ""}`}
                         >
-                          {mine ? (
+                          {mine && !chatLocked ? (
                             <ChatReplyAction
                               onClick={() => setReplyingTo({
                                 id: Number(item.id),
@@ -301,7 +318,7 @@ function MiniChat({ chat, session, onClose, onExpandFull }) {
                               mine={mine}
                             />
                           </div>
-                          {!mine ? (
+                          {!mine && !chatLocked ? (
                             <ChatReplyAction
                               onClick={() => setReplyingTo({
                                 id: Number(item.id),
@@ -334,12 +351,18 @@ function MiniChat({ chat, session, onClose, onExpandFull }) {
             ) : null}
           </div>
           <div className="border-t border-slate-200 bg-white p-2.5">
-            <CompactChatComposer
-              onSend={send}
-              sending={sending}
-              replyingTo={replyingTo}
-              onCancelReply={() => setReplyingTo(null)}
-            />
+            {chatLocked ? (
+              <div className="rounded-lg bg-slate-50 px-3 py-2 text-center text-xs text-slate-500">
+                งานเสร็จแล้ว — แชทเปิดดูได้อย่างเดียว
+              </div>
+            ) : (
+              <CompactChatComposer
+                onSend={send}
+                sending={sending}
+                replyingTo={replyingTo}
+                onCancelReply={() => setReplyingTo(null)}
+              />
+            )}
           </div>
         </>
       ) : null}

@@ -246,7 +246,14 @@ function AuthenticatedApp({
         onSwitchCompany={switchCompany}
         switchingCompany={switchingCompany}
       >
-        <AppRoutes key={session.user.companyId} session={session} />
+        <AppRoutes
+          key={session.user.companyId}
+          session={session}
+          onSessionUpdate={(next) => setSession({
+            user: next.user,
+            companies: next.companies || session.companies,
+          })}
+        />
       </AppLayout>
       <StartupWorkModal
         open={startupModalOpen}

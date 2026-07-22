@@ -4,6 +4,7 @@ import {
   Avatar,
   Button,
   Drawer,
+  Dropdown,
   Menu,
   Select,
 } from "antd";
@@ -16,6 +17,7 @@ import {
   MenuOutlined,
   ProjectOutlined,
   SafetyCertificateOutlined,
+  UserOutlined,
 } from "@ant-design/icons";
 import { APP_VERSION, NAV_ITEMS, ROLE_LABELS } from "../constants";
 import { NotificationCenter } from "../components/notifications/NotificationCenter";
@@ -141,9 +143,29 @@ export function AppLayout({
   const navigationItems = canAccessAdmin
     ? [...baseNavigation, { path: "/admin/access", label: "สมาชิกและสิทธิ์", key: "access" }]
     : baseNavigation;
-  const selectedKey = navigationItems.find((item) => item.path === location.pathname)?.key || "dashboard";
-  const pageTitle = navigationItems.find((item) => item.path === location.pathname)?.label || "IPMS";
+  const selectedKey = location.pathname === "/profile"
+    ? "profile"
+    : (navigationItems.find((item) => item.path === location.pathname)?.key || "dashboard");
+  const pageTitle = location.pathname === "/profile"
+    ? "ข้อมูลของฉัน"
+    : (navigationItems.find((item) => item.path === location.pathname)?.label || "IPMS");
 
+  const userMenuItems = [
+    {
+      key: "profile",
+      icon: <UserOutlined />,
+      label: "ดูข้อมูลของฉัน",
+      onClick: () => navigate("/profile"),
+    },
+    { type: "divider" },
+    {
+      key: "logout",
+      icon: <LogoutOutlined />,
+      label: "ออกจากระบบ",
+      danger: true,
+      onClick: () => onLogout?.(),
+    },
+  ];
   useEffect(() => {
     const onResize = () => setIsDesktop(window.innerWidth >= 1024);
     window.addEventListener("resize", onResize);
@@ -245,7 +267,19 @@ export function AppLayout({
               onOpenChat={openChat}
               requesterView={requesterView}
             />
-            <Avatar className="bg-red-700">{session.user.name.slice(0, 1)}</Avatar>
+            <Dropdown
+              menu={{ items: userMenuItems }}
+              placement="bottomRight"
+              trigger={["click"]}
+            >
+              <button
+                type="button"
+                className="cursor-pointer rounded-full border-0 bg-transparent p-0"
+                aria-label="เมนูบัญชีผู้ใช้"
+              >
+                <Avatar className="bg-red-700">{session.user.name.slice(0, 1)}</Avatar>
+              </button>
+            </Dropdown>
           </div>
         </header>
 

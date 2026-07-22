@@ -783,7 +783,7 @@ function ProjectPlanTimeline({ project, plans, canEdit, onEdit }) {
       ) : (
         <div
           ref={scrollRef}
-          className="project-plan-scroll max-h-[min(70vh,720px)] overflow-auto"
+          className="project-plan-scroll min-h-[min(55vh,560px)] max-h-[min(85vh,960px)] overflow-auto"
           onScroll={updateWindowFromScroll}
         >
           <div className="flex min-w-0 items-start">
@@ -905,6 +905,11 @@ export function ProjectDetailPage({ session }) {
   const canEditPlans = Boolean(permissions.canEditPlans)
     && hasPermission(session.user, "projects.plan.manage");
   const canChat = hasPermission(session.user, "projects.chat");
+  const boardLocked = Boolean(permissions.boardLocked || project?.board_locked);
+  const workComplete = Number(project?.work_total || 0) > 0
+    && Number(project?.work_done || 0) >= Number(project?.work_total || 0);
+  const chatLocked = boardLocked || workComplete || project?.status === "completed";
+  const canSendChat = canChat && !chatLocked;
 
   const memberUsers = useMemo(
     () =>
@@ -1087,6 +1092,10 @@ export function ProjectDetailPage({ session }) {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, activeTab]);
 
+  useEffect(() => {
+    if (chatLocked) setReplyingTo(null);
+  }, [chatLocked]);
+
   const saveMembers = async (payload) => {
     setSavingMembers(true);
     try {
@@ -1184,6 +1193,10 @@ export function ProjectDetailPage({ session }) {
   }, [projectId]);
 
   const sendChat = async (body, files, replyToId) => {
+    if (chatLocked) {
+      message.warning("งานทั้งหมดเสร็จสิ้นแล้ว ไม่สามารถส่งข้อความในแชททีมได้อีก");
+      return false;
+    }
     if (!body && !files.length) return false;
     setSendingChat(true);
     try {
@@ -1523,7 +1536,7 @@ export function ProjectDetailPage({ session }) {
                       timeline.compactSender ? "mt-0.5" : "mt-2"
                     } ${Number(highlightedMessageId) === Number(item.id) ? "rounded-xl bg-amber-100 ring-2 ring-amber-300" : ""}`}
                   >
-                    {isMine ? (
+                    {isMine && canSendChat ? (
                       <ChatReplyAction
                         onClick={() => setReplyingTo({
                           id: Number(item.id),
@@ -1560,7 +1573,7 @@ export function ProjectDetailPage({ session }) {
                         mine={isMine}
                       />
                     </div>
-                    {!isMine ? (
+                    {!isMine && canSendChat ? (
                       <ChatReplyAction
                         onClick={() => setReplyingTo({
                           id: Number(item.id),
@@ -1578,7 +1591,7 @@ export function ProjectDetailPage({ session }) {
         )}
         <div ref={chatEndRef} />
       </div>
-      {canChat ? (
+      {canSendChat ? (
         <CompactChatComposer
           onSend={sendChat}
           sending={sendingChat}
@@ -1588,7 +1601,9 @@ export function ProjectDetailPage({ session }) {
         />
       ) : (
         <div className="rounded-xl bg-slate-50 px-4 py-3 text-center text-sm text-slate-500">
-          คุณมีสิทธิ์อ่านแชท แต่ไม่มีสิทธิ์ส่งข้อความ
+          {chatLocked
+            ? "งานทั้งหมดเสร็จสิ้นแล้ว — แชททีมเปิดดูได้อย่างเดียว พิมพ์ต่อไม่ได้"
+            : "คุณมีสิทธิ์อ่านแชท แต่ไม่มีสิทธิ์ส่งข้อความ"}
         </div>
       )}
     </Card>

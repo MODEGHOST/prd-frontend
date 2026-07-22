@@ -349,8 +349,15 @@ function InvitationsPanel() {
           >
             <Input />
           </Form.Item>
-          <Form.Item name="employeeCode" label="รหัสพนักงาน">
-            <Input />
+          <Form.Item
+            name="employeeCode"
+            label="รหัสพนักงาน"
+            normalize={(value) => String(value || "").replace(/\D/g, "").slice(0, 8)}
+            rules={[
+              { pattern: /^(\d{8})?$/, message: "รหัสพนักงานต้องเป็นตัวเลข 8 หลัก" },
+            ]}
+          >
+            <Input inputMode="numeric" placeholder="ตัวเลข 8 หลัก" maxLength={8} />
           </Form.Item>
           <Form.Item name="roles" label="Role" rules={[{ required: true, message: "กรุณาเลือก Role" }]}>
             <Select

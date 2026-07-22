@@ -29,6 +29,7 @@ export function TaskDetail({
   loading,
   onClose,
   onSave,
+  readOnlyHint,
 }) {
   const [form] = Form.useForm();
 
@@ -150,7 +151,7 @@ export function TaskDetail({
         </div>
         {!canEdit ? (
           <div className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
-            คุณเปิดดูรายละเอียดได้ แต่ไม่มีสิทธิ์แก้ไขงานนี้
+            {readOnlyHint || "คุณเปิดดูรายละเอียดได้ แต่ไม่มีสิทธิ์แก้ไขงานนี้"}
           </div>
         ) : null}
       </Form>

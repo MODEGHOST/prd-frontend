@@ -56,6 +56,7 @@ export function unwrapPage(data) {
 export const authApi = {
   login: (payload) => api.post("/auth/login", payload),
   me: () => api.get("/auth/me"),
+  updateProfile: (payload) => api.patch("/auth/me", payload),
   companies: () => api.get("/companies/public"),
   register: (payload) => api.post("/auth/register", payload),
   verifyEmail: (token) => api.post("/auth/verify-email", { token }),

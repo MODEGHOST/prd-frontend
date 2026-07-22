@@ -1,15 +1,24 @@
 import { useEffect, useState } from "react";
-import { Button, Card, Empty, List, Modal, Pagination, message } from "antd";
+import { Button, Card, Empty, List, Modal, Pagination, Select, message } from "antd";
 import { BugOutlined, PlusOutlined, RightOutlined } from "@ant-design/icons";
 import { useLocation, useNavigate } from "react-router-dom";
 import { IssueForm } from "../components/forms/IssueForm";
 import { useIssueDrawer } from "../components/issues/IssueDrawerContext";
 import { PageHeader } from "../components/ui/PageHeader";
 import { PriorityTag, StatusTag } from "../components/ui/StatusTag";
+import { ISSUE_STATUS_FILTER_OPTIONS } from "../constants";
 import { issuesApi, projectsApi } from "../services/api";
 import { hasPermission, isRequesterPersona } from "../utils/access";
 
 const PAGE_SIZE = 6;
+
+function issueListParams(page, statusFilter) {
+  return {
+    page,
+    limit: PAGE_SIZE,
+    ...(statusFilter ? { status: statusFilter } : {}),
+  };
+}
 
 function requesterStatusSummary(status) {
   if (status === "open") return "ทีมกำลังรอรับเรื่อง";
@@ -31,6 +40,7 @@ export function IssuesPage({ user }) {
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState(null);
 
   useEffect(() => {
     if (new URLSearchParams(location.search).get("new") === "1") setOpen(true);
@@ -49,7 +59,7 @@ export function IssuesPage({ user }) {
   };
 
   const loadIssues = async (nextPage = page) => {
-    const issuePage = await issuesApi.list({ page: nextPage, limit: PAGE_SIZE });
+    const issuePage = await issuesApi.list(issueListParams(nextPage, statusFilter));
     setIssues(issuePage.items);
     setTotal(issuePage.total);
   };
@@ -58,7 +68,7 @@ export function IssuesPage({ user }) {
     let active = true;
     setLoading(true);
     issuesApi
-      .list({ page, limit: PAGE_SIZE })
+      .list(issueListParams(page, statusFilter))
       .then((issuePage) => {
         if (!active) return;
         setIssues(issuePage.items);
@@ -73,7 +83,7 @@ export function IssuesPage({ user }) {
     return () => {
       active = false;
     };
-  }, [revision, page, requesterView]);
+  }, [revision, page, requesterView, statusFilter]);
 
   useEffect(() => {
     if (!open || projects.length) return undefined;
@@ -131,6 +141,21 @@ export function IssuesPage({ user }) {
           </Button>
         ) : null}
       />
+
+      <Card className="mb-4 rounded-xl shadow-sm" styles={{ body: { padding: 12 } }}>
+        <Select
+          allowClear
+          size="small"
+          className="min-w-44"
+          value={statusFilter}
+          onChange={(value) => {
+            setStatusFilter(value ?? null);
+            setPage(1);
+          }}
+          placeholder="สถานะทั้งหมด"
+          options={ISSUE_STATUS_FILTER_OPTIONS}
+        />
+      </Card>
 
       <Card className="rounded-2xl shadow-sm" loading={loading} styles={{ body: { padding: 0 } }}>
         <List

@@ -91,6 +91,15 @@ export const STATUS_COLORS = {
   on_hold: "warning",
 };
 
+export const ISSUE_STATUS_FILTER_OPTIONS = [
+  { value: "open", label: "รอรับเรื่อง" },
+  { value: "accepted", label: "รับเรื่องแล้ว" },
+  { value: "in_progress", label: "กำลังดำเนินการ" },
+  { value: "closed", label: "เสร็จสิ้น" },
+  { value: "rejected", label: "ไม่อนุมัติ" },
+  { value: "cancelled", label: "ยกเลิกแล้ว" },
+];
+
 export const TASK_COLUMNS = ["todo", "doing", "review", "done"];
 
 export const NAV_ITEMS = [

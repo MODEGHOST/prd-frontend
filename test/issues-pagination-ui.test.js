@@ -9,8 +9,14 @@ const [issuesPage, layout] = await Promise.all([
 
 test("issues fetch six server-paginated records", () => {
   assert.match(issuesPage, /const PAGE_SIZE = 6/);
-  assert.match(issuesPage, /\.list\(\{ page, limit: PAGE_SIZE \}\)/);
+  assert.match(issuesPage, /issueListParams\(page, statusFilter\)/);
   assert.match(issuesPage, /pageSize=\{PAGE_SIZE\}/);
+});
+
+test("issues page supports status filter", () => {
+  assert.match(issuesPage, /ISSUE_STATUS_FILTER_OPTIONS/);
+  assert.match(issuesPage, /statusFilter \? \{ status: statusFilter \}/);
+  assert.match(issuesPage, /placeholder="สถานะทั้งหมด"/);
 });
 
 test("project options load only when the issue form opens", () => {

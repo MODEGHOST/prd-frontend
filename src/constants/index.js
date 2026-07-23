@@ -102,6 +102,14 @@ export const ISSUE_STATUS_FILTER_OPTIONS = [
 
 export const TASK_COLUMNS = ["todo", "doing", "review", "done"];
 
+/** Brand red while in progress; green when complete. */
+export const PROGRESS_STROKE = "#b91c1c";
+export const PROGRESS_STROKE_COMPLETE = "#16a34a";
+
+export function progressStrokeColor(percent) {
+  return Number(percent) >= 100 ? PROGRESS_STROKE_COMPLETE : PROGRESS_STROKE;
+}
+
 export const NAV_ITEMS = [
   { path: "/", label: "ภาพรวม", key: "dashboard" },
   { path: "/projects", label: "โครงการ", key: "projects" },

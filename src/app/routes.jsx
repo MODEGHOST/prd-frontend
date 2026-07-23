@@ -1,23 +1,24 @@
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { hasPermission } from "../utils/access";
 import { AppLoadingState } from "../components/ui/AppLoadingState";
+import { lazyWithRetry } from "../utils/lazyWithRetry";
 
-const DashboardPage = lazy(() =>
+const DashboardPage = lazyWithRetry(() =>
   import("../pages/DashboardPage").then((module) => ({ default: module.DashboardPage })));
-const ProjectsPage = lazy(() =>
+const ProjectsPage = lazyWithRetry(() =>
   import("../pages/ProjectsPage").then((module) => ({ default: module.ProjectsPage })));
-const ProjectDetailPage = lazy(() =>
+const ProjectDetailPage = lazyWithRetry(() =>
   import("../pages/ProjectDetailPage").then((module) => ({ default: module.ProjectDetailPage })));
-const BoardPage = lazy(() =>
+const BoardPage = lazyWithRetry(() =>
   import("../pages/BoardPage").then((module) => ({ default: module.BoardPage })));
-const IssuesPage = lazy(() =>
+const IssuesPage = lazyWithRetry(() =>
   import("../pages/IssuesPage").then((module) => ({ default: module.IssuesPage })));
-const MyTasksPage = lazy(() =>
+const MyTasksPage = lazyWithRetry(() =>
   import("../pages/MyTasksPage").then((module) => ({ default: module.MyTasksPage })));
-const AccessAdminPage = lazy(() =>
+const AccessAdminPage = lazyWithRetry(() =>
   import("../pages/AccessAdminPage").then((module) => ({ default: module.AccessAdminPage })));
-const ProfilePage = lazy(() =>
+const ProfilePage = lazyWithRetry(() =>
   import("../pages/ProfilePage").then((module) => ({ default: module.ProfilePage })));
 
 function canAccessAdmin(session) {

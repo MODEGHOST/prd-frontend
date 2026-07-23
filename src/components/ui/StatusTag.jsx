@@ -12,20 +12,20 @@ export function StatusTag({ value }) {
   return <Tag color={STATUS_COLORS[value] || "default"}>{STATUS_LABELS[value] || value}</Tag>;
 }
 
-export function PriorityTag({ value, labeled = false, className }) {
+export function PriorityTag({ value, labeled = true, className }) {
   const text = PRIORITY_LABELS[value] || value;
   return (
     <Tag color={PRIORITY_COLORS[value] || "default"} className={className}>
-      {labeled ? `สำคัญ · ${text}` : text}
+      {labeled ? `ความสำคัญ · ${text}` : text}
     </Tag>
   );
 }
 
-export function DifficultyTag({ value, labeled = false, className }) {
+export function DifficultyTag({ value, labeled = true, className }) {
   const text = DIFFICULTY_LABELS[value] || value;
   return (
     <Tag color={DIFFICULTY_COLORS[value] || "default"} className={className}>
-      {labeled ? `ยาก · ${text}` : text}
+      {labeled ? `ความยาก · ${text}` : text}
     </Tag>
   );
 }

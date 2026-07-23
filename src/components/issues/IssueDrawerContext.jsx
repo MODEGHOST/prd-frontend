@@ -1,6 +1,5 @@
 import {
   createContext,
-  lazy,
   Suspense,
   useCallback,
   useContext,
@@ -10,8 +9,9 @@ import {
   useState,
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { lazyWithRetry } from "../../utils/lazyWithRetry";
 
-const IssueDetail = lazy(() =>
+const IssueDetail = lazyWithRetry(() =>
   import("../issues/IssueDetail").then((module) => ({ default: module.IssueDetail })));
 
 const IssueDrawerContext = createContext(null);

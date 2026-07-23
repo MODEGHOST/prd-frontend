@@ -322,6 +322,7 @@ export function IssueDetail({ issue, user, users: usersProp, open, onClose, onCh
       content: "เมื่อปิด Ticket แล้ว รายละเอียดและแชทจะอ่านได้อย่างเดียวและแก้ไขไม่ได้",
       okText: "เสร็จสิ้นและปิด Ticket",
       cancelText: "ยกเลิก",
+      centered: true,
       okButtonProps: { danger: true },
       onOk: () => runAction(
         () => issuesApi.updateWorkflow(detail.id, "closed"),
@@ -354,6 +355,7 @@ export function IssueDetail({ issue, user, users: usersProp, open, onClose, onCh
       content: "เมื่อยกเลิกแล้วจะไม่สามารถแก้ไขหรือเปิดคำขอนี้กลับมาได้",
       okText: "ยืนยันยกเลิกคำขอ",
       cancelText: "กลับ",
+      centered: true,
       okButtonProps: { danger: true },
       onOk: () => runAction(
         () => issuesApi.cancel(detail.id),
@@ -607,6 +609,23 @@ export function IssueDetail({ issue, user, users: usersProp, open, onClose, onCh
               <div className="rounded-2xl border border-red-100 bg-red-50/40 p-4">
                 <Typography.Title level={5} className="!mt-0">จัดการ Ticket</Typography.Title>
                 <Space wrap>
+                  {permissions.canWork && detail.status === "accepted" ? (
+                    <Button
+                      type="primary"
+                      loading={actionLoading}
+                      onClick={() => runAction(
+                        () => issuesApi.updateWorkflow(detail.id, "in_progress"),
+                        "เริ่มดำเนินการแล้ว",
+                      )}
+                    >
+                      เริ่มดำเนินการ
+                    </Button>
+                  ) : null}
+                  {permissions.canWork && detail.status === "in_progress" ? (
+                    <Button disabled>
+                      {detail.board_status === "review" ? "อยู่ระหว่างตรวจสอบ" : "เริ่มดำเนินการแล้ว"}
+                    </Button>
+                  ) : null}
                   {permissions.canEdit ? (
                     <Button type="primary" onClick={openEdit}>แก้ไขคำขอ</Button>
                   ) : null}
@@ -636,23 +655,6 @@ export function IssueDetail({ issue, user, users: usersProp, open, onClose, onCh
                   ) : null}
                   {permissions.canConvertToProject ? (
                     <Button onClick={openConvert}>สร้างเป็นโครงการ</Button>
-                  ) : null}
-                  {permissions.canWork && detail.status === "accepted" ? (
-                    <Button
-                      type="primary"
-                      loading={actionLoading}
-                      onClick={() => runAction(
-                        () => issuesApi.updateWorkflow(detail.id, "in_progress"),
-                        "เริ่มดำเนินการแล้ว",
-                      )}
-                    >
-                      เริ่มดำเนินการ
-                    </Button>
-                  ) : null}
-                  {permissions.canWork && detail.status === "in_progress" ? (
-                    <Button disabled>
-                      {detail.board_status === "review" ? "อยู่ระหว่างตรวจสอบ" : "เริ่มดำเนินการแล้ว"}
-                    </Button>
                   ) : null}
                   {permissions.canWork && ["accepted", "in_progress"].includes(detail.status) ? (
                     <Button danger onClick={confirmComplete}>เสร็จสิ้นงาน</Button>

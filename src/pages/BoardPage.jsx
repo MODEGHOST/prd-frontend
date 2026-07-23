@@ -36,6 +36,7 @@ import { VirtualList } from "../components/ui/VirtualList";
 import {
   STATUS_LABELS,
   TASK_COLUMNS,
+  progressStrokeColor,
 } from "../constants";
 import { boardApi, issuesApi, projectsApi, tasksApi } from "../services/api";
 import { getSocket, joinIssueRoom, joinProjectRoom } from "../services/socket";
@@ -630,184 +631,199 @@ export function BoardPage({ user }) {
           subtitle="เลือกโครงการหรือ Ticket เพื่อเปิดกระดานและจัดการสถานะงาน"
         />
 
-        <Card
-          className="mb-6 rounded-xl shadow-sm"
-          styles={{ body: { padding: 12 } }}
-        >
-          <div className="flex flex-wrap items-center gap-2">
-            <Input
-              allowClear
-              size="small"
-              className="min-w-56 flex-1"
-              value={overviewQuery}
-              onChange={(event) => {
-                setOverviewQuery(event.target.value);
-                setOverviewPage(1);
-              }}
-              prefix={<SearchOutlined className="text-slate-400" />}
-              placeholder="ค้นหาชื่อ รหัสโครงการ หรือเลข Ticket"
-            />
-            <Segmented
-              size="small"
-              value={overviewType}
-              onChange={(value) => {
-                setOverviewType(value);
-                setOverviewPage(1);
-              }}
-              options={[
-                { value: "all", label: "ทั้งหมด" },
-                { value: "project", label: "โครงการ" },
-                ...(canUseTicketBoard ? [{ value: "ticket", label: "Ticket" }] : []),
-              ]}
-            />
-            <Select
-              allowClear
-              size="small"
-              className="min-w-36"
-              value={overviewStatus}
-              onChange={(value) => {
-                setOverviewStatus(value);
-                setOverviewPage(1);
-              }}
-              placeholder="สถานะ"
-              options={[
-                { value: "pending", label: "รออนุมัติ" },
-                { value: "active", label: "โครงการกำลังดำเนินการ" },
-                { value: "on_hold", label: "พักโครงการ" },
-                { value: "completed", label: "โครงการเสร็จสิ้น" },
-                { value: "accepted", label: "Ticket รับเรื่องแล้ว" },
-                { value: "in_progress", label: "Ticket กำลังดำเนินการ" },
-              ]}
-            />
-            <AppRangePicker
-              size="small"
-              className=""
-              value={overviewRange}
-              onChange={(value) => {
-                setOverviewRange(value);
-                setOverviewPage(1);
-              }}
-              presets={dateRangePresets}
-              placeholder={["ตั้งแต่วันที่", "ถึงวันที่"]}
-            />
-            <Select
-              size="small"
-              className="min-w-36"
-              value={overviewSort}
-              onChange={(value) => {
-                setOverviewSort(value);
-                setOverviewPage(1);
-              }}
-              options={[
-                { value: "updated", label: "อัปเดตล่าสุด" },
-                { value: "due", label: "ใกล้ครบกำหนด" },
-                { value: "workload", label: "งานค้างมากที่สุด" },
-              ]}
-            />
-            <Button
-              size="small"
-              type="text"
-              icon={<ClearOutlined />}
-              onClick={() => {
-                setOverviewQuery("");
-                setOverviewType("all");
-                setOverviewStatus();
-                setOverviewRange(null);
-                setOverviewSort("updated");
-                setOverviewPage(1);
-              }}
-            >
-              ล้าง
-            </Button>
-            <span className="ml-auto text-xs text-slate-400">{overviewTotal} รายการ</span>
-          </div>
-        </Card>
-
-        {overviewItems.length ? (
-          <>
-            <Row gutter={[14, 14]} className="mt-2">
-              {overviewItems.map((item) => {
-              const isProject = item.kind === "project";
-              const total = Number(item.work_total || 0);
-              const done = Number(item.work_done || 0);
-              const percent = total ? Math.round((done / total) * 100) : 0;
-              return (
-                <Col xs={24} sm={12} xl={8} key={`${item.kind}-${item.id}`}>
-                  <Card
-                    hoverable
-                    loading={overviewLoading}
-                    className="h-full rounded-xl border border-slate-200 shadow-sm"
-                    styles={{ body: { padding: 16 } }}
-                    onClick={() => openBoard(item)}
-                  >
-                    <div className="mb-2 flex items-start justify-between gap-2">
-                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-                        isProject ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700"
-                      }`}
-                      >
-                        {isProject ? <FolderOutlined /> : <BugOutlined />}
-                      </div>
-                      <Tag color={isProject ? "red" : "gold"}>
-                        {isProject ? "โครงการ" : "Ticket"}
-                      </Tag>
-                    </div>
-                    <div className="text-xs font-medium text-slate-400">
-                      {isProject ? item.code : item.ticket_no}
-                    </div>
-                    <div className="mt-1 line-clamp-2 min-h-10 text-sm font-semibold text-slate-800">
-                      {item.title}
-                    </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-1">
-                      <StatusTag value={item.status} />
-                      {!isProject ? <PriorityTag value={item.priority} /> : null}
-                    </div>
-                    {isProject ? (
-                      <div className="mt-3">
-                        <div className="mb-1 flex justify-between text-xs text-slate-500">
-                          <span>ความคืบหน้า</span>
-                          <span>{done}/{total} งาน · {percent}%</span>
-                        </div>
-                        <Progress percent={percent} size="small" showInfo={false} strokeColor="#b91c1c" />
-                      </div>
-                    ) : (
-                      <div className="mt-3 truncate text-xs text-slate-500">
-                        {item.project_name || "Ticket ทั่วไป"}
-                        {item.assignee_name ? ` · ${item.assignee_name}` : ""}
-                      </div>
-                    )}
-                    <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2">
-                      <span className="text-xs text-slate-400">
-                        {item.item_date ? formatDate(item.item_date) : "ไม่กำหนดวันที่"}
-                      </span>
-                      <Button size="small" type="link" className="!h-auto !px-0">เปิดกระดาน</Button>
-                    </div>
-                  </Card>
-                </Col>
-              );
-              })}
-            </Row>
-            {overviewTotal > 6 ? (
-              <div className="mt-4 flex justify-center">
-                <Pagination
+        <div className="flex flex-col gap-4">
+          <Card
+            className="rounded-xl shadow-sm"
+            styles={{ body: { padding: 12 } }}
+          >
+            <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
+              <Input
+                allowClear
+                size="small"
+                className="w-full md:min-w-56 md:flex-1"
+                value={overviewQuery}
+                onChange={(event) => {
+                  setOverviewQuery(event.target.value);
+                  setOverviewPage(1);
+                }}
+                prefix={<SearchOutlined className="text-slate-400" />}
+                placeholder="ค้นหาชื่อ รหัสโครงการ หรือเลข Ticket"
+              />
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:contents">
+                <div className="w-full sm:col-span-2 md:w-auto md:min-w-0 [&_.ant-segmented]:w-full md:[&_.ant-segmented]:w-auto">
+                  <Segmented
+                    size="small"
+                    value={overviewType}
+                    onChange={(value) => {
+                      setOverviewType(value);
+                      setOverviewPage(1);
+                    }}
+                    options={[
+                      { value: "all", label: "ทั้งหมด" },
+                      { value: "project", label: "โครงการ" },
+                      ...(canUseTicketBoard ? [{ value: "ticket", label: "Ticket" }] : []),
+                    ]}
+                  />
+                </div>
+                <Select
+                  allowClear
                   size="small"
-                  current={overviewPage}
-                  pageSize={6}
-                  total={overviewTotal}
-                  showSizeChanger={false}
-                  onChange={setOverviewPage}
+                  className="w-full md:min-w-36 md:w-36"
+                  value={overviewStatus}
+                  onChange={(value) => {
+                    setOverviewStatus(value);
+                    setOverviewPage(1);
+                  }}
+                  placeholder="สถานะ"
+                  options={[
+                    { value: "pending", label: "รออนุมัติ" },
+                    { value: "active", label: "โครงการกำลังดำเนินการ" },
+                    { value: "on_hold", label: "พักโครงการ" },
+                    { value: "completed", label: "โครงการเสร็จสิ้น" },
+                    { value: "accepted", label: "Ticket รับเรื่องแล้ว" },
+                    { value: "in_progress", label: "Ticket กำลังดำเนินการ" },
+                  ]}
                 />
+                <AppRangePicker
+                  size="small"
+                  className="w-full sm:col-span-2 md:w-auto"
+                  value={overviewRange}
+                  onChange={(value) => {
+                    setOverviewRange(value);
+                    setOverviewPage(1);
+                  }}
+                  presets={dateRangePresets}
+                  placeholder={["ตั้งแต่วันที่", "ถึงวันที่"]}
+                />
+                <Select
+                  size="small"
+                  className="w-full md:min-w-36 md:w-40"
+                  value={overviewSort}
+                  onChange={(value) => {
+                    setOverviewSort(value);
+                    setOverviewPage(1);
+                  }}
+                  options={[
+                    { value: "updated", label: "อัปเดตล่าสุด" },
+                    { value: "due", label: "ใกล้ครบกำหนด" },
+                    { value: "workload", label: "งานค้างมากที่สุด" },
+                  ]}
+                />
+                <div className="flex items-center justify-between gap-2 sm:col-span-2 md:contents">
+                  <Button
+                    size="small"
+                    type="text"
+                    icon={<ClearOutlined />}
+                    onClick={() => {
+                      setOverviewQuery("");
+                      setOverviewType("all");
+                      setOverviewStatus();
+                      setOverviewRange(null);
+                      setOverviewSort("updated");
+                      setOverviewPage(1);
+                    }}
+                  >
+                    ล้าง
+                  </Button>
+                  <span className="text-xs text-slate-400 md:ml-auto">{overviewTotal} รายการ</span>
+                </div>
               </div>
-            ) : null}
-          </>
-        ) : (
-          <Card className="mt-2 rounded-xl" styles={{ body: { padding: 20 } }}>
-            <Empty
-              description={overviewLoading
-                ? "กำลังโหลดรายการ"
-                : "ไม่พบโครงการหรือ Ticket ตามตัวกรอง"}
-            />
+            </div>
           </Card>
-        )}
+
+          {overviewItems.length ? (
+            <>
+              <Row gutter={[14, 14]}>
+                {overviewItems.map((item) => {
+                const isProject = item.kind === "project";
+                const total = Number(item.work_total || 0);
+                const done = Number(item.work_done || 0);
+                const percent = total ? Math.round((done / total) * 100) : 0;
+                return (
+                  <Col xs={24} sm={12} xl={8} key={`${item.kind}-${item.id}`}>
+                    <Card
+                      hoverable
+                      loading={overviewLoading}
+                      className="h-full rounded-xl border border-slate-200 shadow-sm"
+                      styles={{ body: { padding: 16 } }}
+                      onClick={() => openBoard(item)}
+                    >
+                      <div className="mb-2 flex items-start justify-between gap-2">
+                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                          isProject ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700"
+                        }`}
+                        >
+                          {isProject ? <FolderOutlined /> : <BugOutlined />}
+                        </div>
+                        <Tag color={isProject ? "red" : "gold"}>
+                          {isProject ? "โครงการ" : "Ticket"}
+                        </Tag>
+                      </div>
+                      <div className="text-xs font-medium text-slate-400">
+                        {isProject ? item.code : item.ticket_no}
+                      </div>
+                      <div className="mt-1 line-clamp-2 min-h-10 text-sm font-semibold text-slate-800">
+                        {item.title}
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-1">
+                        <StatusTag value={item.status} />
+                        {!isProject ? <PriorityTag value={item.priority} /> : null}
+                      </div>
+                      {isProject ? (
+                        <div className="mt-3">
+                          <div className="mb-1 flex justify-between text-xs text-slate-500">
+                            <span>ความคืบหน้า</span>
+                            <span className={percent >= 100 ? "font-medium text-green-600" : undefined}>
+                              {done}/{total} งาน · {percent}%
+                            </span>
+                          </div>
+                          <Progress
+                            percent={percent}
+                            size="small"
+                            showInfo={false}
+                            strokeColor={progressStrokeColor(percent)}
+                          />
+                        </div>
+                      ) : (
+                        <div className="mt-3 truncate text-xs text-slate-500">
+                          {item.project_name || "Ticket ทั่วไป"}
+                          {item.assignee_name ? ` · ${item.assignee_name}` : ""}
+                        </div>
+                      )}
+                      <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2">
+                        <span className="text-xs text-slate-400">
+                          {item.item_date ? formatDate(item.item_date) : "ไม่กำหนดวันที่"}
+                        </span>
+                        <Button size="small" type="link" className="!h-auto !px-0">เปิดกระดาน</Button>
+                      </div>
+                    </Card>
+                  </Col>
+                );
+                })}
+              </Row>
+              {overviewTotal > 6 ? (
+                <div className="flex justify-center">
+                  <Pagination
+                    size="small"
+                    current={overviewPage}
+                    pageSize={6}
+                    total={overviewTotal}
+                    showSizeChanger={false}
+                    onChange={setOverviewPage}
+                  />
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <Card className="rounded-xl" styles={{ body: { padding: 20 } }}>
+              <Empty
+                description={overviewLoading
+                  ? "กำลังโหลดรายการ"
+                  : "ไม่พบโครงการหรือ Ticket ตามตัวกรอง"}
+              />
+            </Card>
+          )}
+        </div>
       </div>
     );
   }
@@ -844,7 +860,8 @@ export function BoardPage({ user }) {
           description="กระดานถูกล็อก ไม่สามารถเพิ่ม ย้าย หรือแก้ไขงานได้อีก"
         />
       ) : null}
-      <Card className="mb-10 rounded-xl shadow-sm" styles={{ body: { padding: 16 } }}>
+      <div className="flex flex-col gap-4">
+      <Card className="rounded-xl shadow-sm" styles={{ body: { padding: 16 } }}>
         <div className="flex flex-wrap items-center gap-2">
           <Input
             allowClear
@@ -925,7 +942,7 @@ export function BoardPage({ user }) {
       {!selectedWorkspace ? (
         <Empty description="ไม่พบรายการที่เลือก" />
       ) : (
-        <div className="mt-2 overflow-x-auto pb-2">
+        <div className="overflow-x-auto pb-2">
           <Row gutter={[16, 16]} className="min-w-[720px] md:min-w-[980px]">
             {TASK_COLUMNS.map((column) => {
               const columnTasks = columnItems[column] || [];
@@ -1026,6 +1043,7 @@ export function BoardPage({ user }) {
           </Row>
         </div>
       )}
+      </div>
 
       <Modal
         title="เพิ่มงานใหม่"

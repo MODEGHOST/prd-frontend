@@ -31,6 +31,7 @@ import {
   ROLE_LABELS,
   STATUS_LABELS,
   TASK_COLUMNS,
+  progressStrokeColor,
 } from "../constants";
 import { projectsApi, tasksApi, usersApi } from "../services/api";
 import { getSocket, joinProjectRoom } from "../services/socket";
@@ -1679,9 +1680,19 @@ export function ProjectDetailPage({ session }) {
       <Card className="mb-4 rounded-2xl shadow-sm">
         <div className="mb-2 flex items-center justify-between text-sm">
           <span className="font-medium text-slate-700">ความคืบหน้ารวม Task + Ticket</span>
-          <span className="font-semibold text-red-700">{project.completion_percent || 0}%</span>
+          <span
+            className={`font-semibold ${
+              Number(project.completion_percent || 0) >= 100 ? "text-green-600" : "text-red-700"
+            }`}
+          >
+            {project.completion_percent || 0}%
+          </span>
         </div>
-        <Progress percent={project.completion_percent || 0} showInfo={false} />
+        <Progress
+          percent={project.completion_percent || 0}
+          showInfo={false}
+          strokeColor={progressStrokeColor(project.completion_percent || 0)}
+        />
         <div className="mt-1 text-xs text-slate-400">
           เสร็จแล้ว {project.work_done || 0} จาก {project.work_total || 0} รายการ
         </div>

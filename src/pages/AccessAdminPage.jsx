@@ -340,7 +340,7 @@ function InvitationsPanel() {
           ]}
         />
       </Card>
-      <Modal title="เชิญสมาชิก" open={open} footer={null} onCancel={() => setOpen(false)}>
+      <Modal title="เชิญสมาชิก" open={open} centered footer={null} onCancel={() => setOpen(false)}>
         <Form form={form} layout="vertical" onFinish={invite}>
           <Form.Item
             name="email"
@@ -630,6 +630,7 @@ function RolesPanel() {
       <Modal
         title="สร้าง Custom Role"
         open={createOpen}
+        centered
         footer={null}
         onCancel={() => setCreateOpen(false)}
       >

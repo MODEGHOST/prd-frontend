@@ -174,82 +174,86 @@ export function IssuesPage({ user }) {
           </Button>
         ) : null}
       />
-
-      <Card className="mb-4 rounded-xl shadow-sm" styles={{ body: { padding: 12 } }}>
-        <Select
-          allowClear
-          size="small"
-          className="min-w-44"
-          value={statusFilter}
-          onChange={(value) => {
-            setStatusFilter(value ?? null);
-            setPage(1);
-          }}
-          placeholder="สถานะทั้งหมด"
-          options={ISSUE_STATUS_FILTER_OPTIONS}
-        />
-      </Card>
-
-      <Card className="rounded-2xl shadow-sm" loading={loading} styles={{ body: { padding: 0 } }}>
-        <List
-          dataSource={issues}
-          locale={{ emptyText: <Empty className="py-10" description="ยังไม่มีรายการแจ้งปัญหา" /> }}
-          renderItem={(issue) => (
-            <List.Item
-              className="issue-row cursor-pointer px-4 py-3 md:px-5"
-              onClick={() => openIssue(issue, { syncUrl: true })}
-              actions={[
-                ...(!requesterView ? [<PriorityTag key="priority" value={issue.priority} />] : []),
-                <StatusTag key="status" value={issue.status} />,
-                <RightOutlined key="arrow" className="text-slate-300" />,
-              ]}
-            >
-              <List.Item.Meta
-                avatar={
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
-                    <BugOutlined />
-                  </div>
-                }
-                title={
-                  <div>
-                    <div className="text-xs text-slate-400">
-                      {issue.ticket_no}
-                      {` · ${issue.project_name || "ทั่วไป"}`}
-                      {issue.system_component ? ` · ${issue.system_component}` : ""}
-                    </div>
-                    <div className="text-[15px] font-medium text-slate-800">{issue.title}</div>
-                  </div>
-                }
-                description={
-                  <div>
-                    <div className="line-clamp-1 text-slate-500">{issue.description}</div>
-                    <div className="mt-1 text-xs text-slate-400">
-                      {requesterView
-                        ? requesterStatusSummary(issue.status)
-                        : `ผู้รับผิดชอบ: ${issue.assignee_name || "รอผู้รับเรื่อง"}`}
-                      {!requesterView && Number(issue.member_count) > 0
-                        ? ` · สมาชิก ${issue.member_count} คน`
-                        : ""}
-                    </div>
-                  </div>
-                }
-              />
-            </List.Item>
-          )}
-        />
-        {total > PAGE_SIZE ? (
-          <div className="flex justify-center border-t border-slate-100 py-3">
-            <Pagination
+      
+      <div className="flex flex-col gap-4">
+        <div className="flex justify-end">
+          <Card className="w-fit rounded-xl shadow-sm" styles={{ body: { padding: 12 } }}>
+            <Select
+              allowClear
               size="small"
-              current={page}
-              pageSize={PAGE_SIZE}
-              total={total}
-              onChange={setPage}
-              showSizeChanger={false}
+              className="min-w-44"
+              value={statusFilter}
+              onChange={(value) => {
+                setStatusFilter(value ?? null);
+                setPage(1);
+              }}
+              placeholder="สถานะทั้งหมด"
+              options={ISSUE_STATUS_FILTER_OPTIONS}
             />
-          </div>
-        ) : null}
-      </Card>
+          </Card>
+        </div>
+
+        <Card className="rounded-2xl shadow-sm" loading={loading} styles={{ body: { padding: 0 } }}>
+          <List
+            dataSource={issues}
+            locale={{ emptyText: <Empty className="py-10" description="ยังไม่มีรายการแจ้งปัญหา" /> }}
+            renderItem={(issue) => (
+              <List.Item
+                className="issue-row cursor-pointer px-4 py-3 md:px-5"
+                onClick={() => openIssue(issue, { syncUrl: true })}
+                actions={[
+                  ...(!requesterView ? [<PriorityTag key="priority" value={issue.priority} />] : []),
+                  <StatusTag key="status" value={issue.status} />,
+                  <RightOutlined key="arrow" className="text-slate-300" />,
+                ]}
+              >
+                <List.Item.Meta
+                  avatar={
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
+                      <BugOutlined />
+                    </div>
+                  }
+                  title={
+                    <div>
+                      <div className="text-xs text-slate-400">
+                        {issue.ticket_no}
+                        {` · ${issue.project_name || "ทั่วไป"}`}
+                        {issue.system_component ? ` · ${issue.system_component}` : ""}
+                      </div>
+                      <div className="text-[15px] font-medium text-slate-800">{issue.title}</div>
+                    </div>
+                  }
+                  description={
+                    <div>
+                      <div className="line-clamp-1 text-slate-500">{issue.description}</div>
+                      <div className="mt-1 text-xs text-slate-400">
+                        {requesterView
+                          ? requesterStatusSummary(issue.status)
+                          : `ผู้รับผิดชอบ: ${issue.assignee_name || "รอผู้รับเรื่อง"}`}
+                        {!requesterView && Number(issue.member_count) > 0
+                          ? ` · สมาชิก ${issue.member_count} คน`
+                          : ""}
+                      </div>
+                    </div>
+                  }
+                />
+              </List.Item>
+            )}
+          />
+          {total > PAGE_SIZE ? (
+            <div className="flex justify-center border-t border-slate-100 py-3">
+              <Pagination
+                size="small"
+                current={page}
+                pageSize={PAGE_SIZE}
+                total={total}
+                onChange={setPage}
+                showSizeChanger={false}
+              />
+            </div>
+          ) : null}
+        </Card>
+      </div>
 
       <Modal
         title={requesterView ? "แจ้งเรื่องใหม่" : "แจ้งปัญหาหรือข้อเสนอแนะ"}

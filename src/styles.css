@@ -48,6 +48,123 @@ body {
   }
 }
 
+/* Mobile date/range picker only — desktop / tablet layout stays default Ant Design */
+@media (max-width: 640px) {
+  .app-picker-dropdown.ant-picker-dropdown {
+    left: 8px !important;
+    right: 8px !important;
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    min-width: 0 !important;
+  }
+
+  .app-picker-dropdown .ant-picker-panel-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
+
+  /* Presets + calendar: stack vertically (presets used to sit as a left sidebar) */
+  .app-picker-dropdown .ant-picker-panel-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    max-width: 100%;
+  }
+
+  .app-picker-dropdown .ant-picker-presets {
+    display: block !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+    border-inline-end: none !important;
+  }
+
+  .app-picker-dropdown .ant-picker-presets ul {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 8px !important;
+    overflow: visible !important;
+    border-inline-end: none !important;
+    border-block-end: 1px solid #f0f0f0;
+  }
+
+  .app-picker-dropdown .ant-picker-presets ul li {
+    margin: 0 !important;
+    padding: 4px 10px !important;
+    border-radius: 999px !important;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    line-height: 1.4 !important;
+  }
+
+  .app-picker-dropdown .ant-picker-presets ul li + li {
+    margin-top: 0 !important;
+  }
+
+  /* One month only — stacking both months made the popup overflow the phone screen */
+  .app-picker-dropdown .ant-picker-panels {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    width: 100% !important;
+  }
+
+  .app-picker-dropdown .ant-picker-panels > .ant-picker-panel:nth-child(n + 2) {
+    display: none !important;
+  }
+
+  .app-picker-dropdown .ant-picker-panel,
+  .app-picker-dropdown .ant-picker-date-panel,
+  .app-picker-dropdown .ant-picker-month-panel,
+  .app-picker-dropdown .ant-picker-year-panel,
+  .app-picker-dropdown .ant-picker-decade-panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    border: none !important;
+  }
+
+  .app-picker-dropdown .ant-picker-header,
+  .app-picker-dropdown .ant-picker-body,
+  .app-picker-dropdown .ant-picker-content {
+    width: 100% !important;
+  }
+
+  .app-picker-dropdown .ant-picker-content {
+    table-layout: fixed;
+  }
+
+  .app-picker-dropdown .ant-picker-content th,
+  .app-picker-dropdown .ant-picker-content td {
+    min-width: 0 !important;
+    height: 36px;
+    padding: 0 !important;
+  }
+
+  .app-picker-dropdown .ant-picker-cell-inner {
+    min-width: 32px !important;
+    width: 32px !important;
+    height: 32px !important;
+    line-height: 32px !important;
+    margin-inline: auto;
+  }
+
+  .app-picker-dropdown .ant-picker-datetime-panel {
+    flex-direction: column !important;
+  }
+
+  .app-picker-dropdown .ant-picker-time-panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-inline-start: none !important;
+    border-block-start: 1px solid #f0f0f0;
+  }
+}
+
 .ant-menu-inline .ant-menu-item {
   width: 100% !important;
   margin-inline: 0 !important;

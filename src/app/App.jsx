@@ -1,6 +1,6 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { ConfigProvider, App as AntApp, message } from "antd";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import thTH from "antd/locale/th_TH";
 import { useSession } from "../hooks/useSession";
 import { AppLayout } from "../layouts/AppLayout";
@@ -14,10 +14,11 @@ import { AppErrorBoundary } from "../components/ui/AppErrorBoundary";
 import { isRequesterPersona } from "../utils/access";
 import { StartupWorkModal } from "../components/notifications/StartupWorkModal";
 import { AppLoadingState } from "../components/ui/AppLoadingState";
+import { lazyWithRetry } from "../utils/lazyWithRetry";
 
-const MiniChatDock = lazy(() =>
+const MiniChatDock = lazyWithRetry(() =>
   import("../components/chat/MiniChatDock").then((module) => ({ default: module.MiniChatDock })));
-const InviteAcceptPage = lazy(() =>
+const InviteAcceptPage = lazyWithRetry(() =>
   import("../pages/InviteAcceptPage").then((module) => ({ default: module.InviteAcceptPage })));
 
 function AuthenticatedApp({
@@ -283,9 +284,22 @@ function AuthenticatedApp({
 }
 
 export default function App() {
+  const location = useLocation();
   const [session, setSession] = useSession();
   const [restoring, setRestoring] = useState(true);
   const [loginSummaryRequested, setLoginSummaryRequested] = useState(false);
+
+  // After a healthy boot, allow one future silent chunk-reload again.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        sessionStorage.removeItem("projecthub:chunk-reload");
+      } catch {
+        // Ignore storage errors.
+      }
+    }, 4000);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const completeLogin = useCallback((nextSession) => {
     setLoginSummaryRequested(true);
@@ -331,6 +345,7 @@ export default function App() {
   return (
     <ConfigProvider
       locale={thTH}
+      modal={{ centered: true }}
       theme={{
         token: {
           colorPrimary: "#b91c1c",
@@ -357,7 +372,7 @@ export default function App() {
       }}
     >
       <AntApp>
-        <AppErrorBoundary>
+        <AppErrorBoundary resetKey={location.pathname}>
           {restoring ? (
             <AppLoadingState fullScreen label="กำลังตรวจสอบผู้ใช้และเตรียมข้อมูลระบบ" />
           ) : session && window.location.pathname === "/invite" ? (

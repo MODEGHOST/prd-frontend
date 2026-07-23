@@ -5,6 +5,7 @@ import { PlusOutlined, TeamOutlined, UserOutlined, WalletOutlined } from "@ant-d
 import { ProjectForm } from "../components/forms/ProjectForm";
 import { PageHeader } from "../components/ui/PageHeader";
 import { StatusTag } from "../components/ui/StatusTag";
+import { progressStrokeColor } from "../constants";
 import { projectsApi, usersApi } from "../services/api";
 import { hasPermission } from "../utils/access";
 
@@ -165,9 +166,20 @@ export function ProjectsPage({ user }) {
                 </div>
                 <div className="mb-1 flex items-center justify-between text-xs text-slate-500">
                   <span>ความคืบหน้า</span>
-                  <span className="font-semibold text-slate-700">{progress}%</span>
+                  <span
+                    className={`font-semibold ${
+                      progress >= 100 ? "text-green-600" : "text-slate-700"
+                    }`}
+                  >
+                    {progress}%
+                  </span>
                 </div>
-                <Progress percent={progress} showInfo={false} size="small" />
+                <Progress
+                  percent={progress}
+                  showInfo={false}
+                  size="small"
+                  strokeColor={progressStrokeColor(progress)}
+                />
                 <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-sm text-slate-500">
                   <Space size={6}>
                     <span>{project.work_done || 0}/{project.work_total || 0} รายการเสร็จ</span>

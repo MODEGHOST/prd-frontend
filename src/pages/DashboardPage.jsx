@@ -40,7 +40,7 @@ export function DashboardPage({ user }) {
   }, []);
 
   if (error) return <Empty description={error} />;
-  if (!data && loading) return <Card loading className="rounded-2xl" />;
+  if (loading || !data?.counts) return <Card loading className="rounded-2xl" />;
 
   const counts = data.counts;
   const requesterView = isRequesterPersona(user);
@@ -49,17 +49,20 @@ export function DashboardPage({ user }) {
       title: "เลขที่",
       dataIndex: "ticket_no",
       key: "ticket_no",
+      width: 168,
+      ellipsis: true,
       render: (value) => <span className="font-semibold text-red-700">{value}</span>,
     },
     {
       title: "หัวข้อ",
       dataIndex: "title",
       key: "title",
+      ellipsis: true,
       render: (title, record) => (
-        <div>
-          <div className="font-medium text-slate-800">{title}</div>
+        <div className="min-w-0">
+          <div className="truncate font-medium text-slate-800">{title}</div>
           {!requesterView ? (
-            <div className="text-xs text-slate-400">{record.requester_name}</div>
+            <div className="truncate text-xs text-slate-400">{record.requester_name}</div>
           ) : null}
         </div>
       ),
@@ -68,20 +71,27 @@ export function DashboardPage({ user }) {
       title: "โครงการ",
       dataIndex: "project_name",
       key: "project_name",
+      width: 120,
+      ellipsis: true,
       render: (value) => value || "ทั่วไป",
     }, {
       title: "ความสำคัญ",
       dataIndex: "priority",
       key: "priority",
-      render: (value) => <PriorityTag value={value} />,
+      width: 100,
+      render: (value) => <PriorityTag value={value} labeled={false} />,
     }] : []),
     {
       title: "สถานะ",
       dataIndex: "status",
       key: "status",
+      width: 120,
       render: (value) => <StatusTag value={value} />,
     },
   ];
+
+  const recentIssues = data.recentIssues || [];
+  const emptyText = requesterView ? "ยังไม่มีคำขอ" : "ยังไม่มี Issue";
 
   return (
     <div className="space-y-5">
@@ -177,18 +187,58 @@ export function DashboardPage({ user }) {
         title={<span className="font-semibold">{requesterView ? "คำขอล่าสุด" : "Issue ล่าสุด"}</span>}
         extra={<Link to="/issues" className="text-red-700">ดูทั้งหมด</Link>}
         className="rounded-2xl shadow-sm"
+        styles={{ body: { paddingTop: 12 } }}
       >
-        <Table
-          rowKey="id"
-          columns={columns}
-          dataSource={data.recentIssues}
-          pagination={false}
-          onRow={(record) => ({
-            onClick: () => openIssue(record, { goToIssues: true }),
-            className: "cursor-pointer",
-          })}
-          locale={{ emptyText: requesterView ? "ยังไม่มีคำขอ" : "ยังไม่มี Issue" }}
-        />
+        {!recentIssues.length ? (
+          <Empty description={emptyText} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        ) : (
+          <>
+            <div className="space-y-2 md:hidden">
+              {recentIssues.map((record) => (
+                <button
+                  key={record.id}
+                  type="button"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-3 text-left transition hover:border-red-200 hover:bg-white"
+                  onClick={() => openIssue(record, { goToIssues: true })}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="break-all text-xs font-semibold text-red-700">{record.ticket_no}</span>
+                    <StatusTag value={record.status} />
+                  </div>
+                  <div className="mt-1 line-clamp-2 text-sm font-medium text-slate-800">{record.title}</div>
+                  {!requesterView ? (
+                    <div className="mt-0.5 truncate text-xs text-slate-400">{record.requester_name}</div>
+                  ) : null}
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    {!requesterView ? (
+                      <>
+                        <span className="rounded-md bg-white px-2 py-0.5 text-xs text-slate-500 ring-1 ring-slate-200">
+                          {record.project_name || "ทั่วไป"}
+                        </span>
+                        <PriorityTag value={record.priority} labeled={false} />
+                      </>
+                    ) : null}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <div className="hidden md:block">
+              <Table
+                rowKey="id"
+                columns={columns}
+                dataSource={recentIssues}
+                pagination={false}
+                tableLayout="fixed"
+                onRow={(record) => ({
+                  onClick: () => openIssue(record, { goToIssues: true }),
+                  className: "cursor-pointer",
+                })}
+                locale={{ emptyText }}
+              />
+            </div>
+          </>
+        )}
       </Card>
     </div>
   );

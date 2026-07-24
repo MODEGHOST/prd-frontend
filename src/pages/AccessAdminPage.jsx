@@ -100,13 +100,9 @@ function MembersPanel({ canManageMembers, canManageRoles }) {
           </div>
           <Alert
             showIcon
-            type={row.email_verified_at ? "success" : "warning"}
-            message={row.email_verified_at
-              ? "บุคคลนี้ยืนยันอีเมลแล้ว"
-              : "บุคคลนี้ยังไม่ได้ยืนยันอีเมล"}
-            description={row.email_verified_at
-              ? "เมื่อยืนยัน บุคคลนี้จะได้รับสถานะสมาชิกที่ใช้งานได้"
-              : "อนุมัติ membership ได้ แต่บุคคลนี้จะยังเข้าสู่ระบบไม่ได้จนกว่าจะยืนยันอีเมล"}
+            type="info"
+            message="เมื่ออนุมัติแล้ว บุคคลนี้จะเข้าสู่ระบบได้ทันที"
+            description="ระบบยังไม่บังคับยืนยันอีเมลในระยะแรก"
           />
         </div>
       ),

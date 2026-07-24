@@ -169,7 +169,7 @@ export function LoginPage({ onLogin }) {
         ...values,
         inviteToken: inviteToken || undefined,
       });
-      setSuccess(data.message || "สมัครสมาชิกแล้ว กรุณาตรวจสอบอีเมลและรอผู้ดูแลอนุมัติ");
+      setSuccess(data.message || "สมัครสมาชิกแล้ว กรุณารอผู้ดูแลอนุมัติ");
       setMode("login");
     } catch (err) {
       setError(err.message);
@@ -206,21 +206,6 @@ export function LoginPage({ onLogin }) {
       cancelText: "ยกเลิก",
       onOk: () => forgotPassword({ email }),
     });
-  };
-
-  const resendVerification = async () => {
-    try {
-      const { email } = await forgotForm.validateFields(["email"]);
-      setLoading(true);
-      setError("");
-      setSuccess("");
-      const data = await authApi.resendVerification(email);
-      setSuccess(data.message || "หากบัญชีนี้ยังไม่ได้ยืนยันอีเมล ระบบจะส่งลิงก์ยืนยันให้");
-    } catch (err) {
-      if (!err?.errorFields) setError(err.message);
-    } finally {
-      setLoading(false);
-    }
   };
 
   const resetPassword = async ({ password }) => {
@@ -536,9 +521,6 @@ export function LoginPage({ onLogin }) {
               </Form.Item>
               <Button type="primary" htmlType="submit" size="large" block loading={loading}>
                 ส่งลิงก์รีเซ็ตรหัสผ่าน
-              </Button>
-              <Button type="link" block loading={loading} onClick={resendVerification}>
-                ส่งลิงก์ยืนยันอีเมลอีกครั้ง
               </Button>
               <Button type="link" block onClick={() => changeMode("login")}>
                 กลับไปเข้าสู่ระบบ

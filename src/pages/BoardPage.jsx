@@ -676,7 +676,6 @@ export function BoardPage({ user }) {
                   }}
                   placeholder="สถานะ"
                   options={[
-                    { value: "pending", label: "รออนุมัติ" },
                     { value: "active", label: "โครงการกำลังดำเนินการ" },
                     { value: "on_hold", label: "พักโครงการ" },
                     { value: "completed", label: "โครงการเสร็จสิ้น" },

@@ -45,6 +45,11 @@ import {
   toApiDate,
 } from "../utils/datetime";
 import {
+  DESCRIPTION_SECTIONS,
+  PRD_SECTIONS,
+  sectionEntries,
+} from "../utils/projectBrief";
+import {
   ChatMessageAttachments,
   ChatReplyAction,
   ChatReplyQuote,
@@ -1281,14 +1286,32 @@ export function ProjectDetailPage({ session }) {
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="rounded-2xl shadow-sm lg:col-span-2">
-          <h3 className="mt-0 mb-2 text-base font-semibold text-slate-800">รายละเอียด</h3>
-          <p className="mb-4 whitespace-pre-wrap text-sm text-slate-600">
-            {project.description || "ยังไม่มีรายละเอียด"}
-          </p>
-          <h3 className="mb-2 text-base font-semibold text-slate-800">PRD</h3>
-          <p className="mb-0 whitespace-pre-wrap text-sm text-slate-600">
-            {project.prd || "ยังไม่มี Product Requirement"}
-          </p>
+          <h3 className="mt-0 mb-3 text-base font-semibold text-slate-800">รายละเอียด</h3>
+          {sectionEntries(DESCRIPTION_SECTIONS, project).length ? (
+            <div className="mb-4 space-y-3">
+              {sectionEntries(DESCRIPTION_SECTIONS, project).map((entry) => (
+                <div key={entry.key}>
+                  <div className="text-xs font-medium text-slate-400">{entry.label}</div>
+                  <p className="mb-0 mt-1 whitespace-pre-wrap text-sm text-slate-600">{entry.value}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mb-4 text-sm text-slate-600">ยังไม่มีรายละเอียด</p>
+          )}
+          <h3 className="mb-3 text-base font-semibold text-slate-800">Product Requirement</h3>
+          {sectionEntries(PRD_SECTIONS, project).length ? (
+            <div className="space-y-3">
+              {sectionEntries(PRD_SECTIONS, project).map((entry) => (
+                <div key={entry.key}>
+                  <div className="text-xs font-medium text-slate-400">{entry.label}</div>
+                  <p className="mb-0 mt-1 whitespace-pre-wrap text-sm text-slate-600">{entry.value}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mb-0 text-sm text-slate-600">ยังไม่มี Product Requirement</p>
+          )}
         </Card>
         <Card className="rounded-2xl shadow-sm">
           <div className="space-y-3 text-sm text-slate-600">
@@ -1648,18 +1671,9 @@ export function ProjectDetailPage({ session }) {
         subtitle={`${project.code} · เจ้าของหลัก ${project.owner_name || "-"} · ผู้สร้าง ${project.creator_name || "-"}`}
         extra={
           canUpdateStatus ? (
-            project.status === "pending" ? (
-              <Space>
-                <Button type="primary" onClick={() => updateProjectStatus("active")}>
-                  อนุมัติโครงการ
-                </Button>
-                <Button danger onClick={() => updateProjectStatus("rejected")}>
-                  ปฏิเสธ
-                </Button>
-              </Space>
-            ) : ["active", "on_hold", "completed"].includes(project.status) ? (
+            ["pending", "active", "on_hold", "completed"].includes(project.status) ? (
               <Select
-                value={project.status}
+                value={project.status === "pending" ? "active" : project.status}
                 className="min-w-40"
                 onChange={updateProjectStatus}
                 options={[

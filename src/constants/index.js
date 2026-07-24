@@ -2,11 +2,11 @@
 export const APP_VERSION = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "1.0.0";
 
 export const STATUS_LABELS = {
-  pending: "รออนุมัติ",
+  pending: "กำลังดำเนินการ",
   active: "กำลังดำเนินการ",
   on_hold: "พักโครงการ",
   completed: "เสร็จสิ้น",
-  rejected: "ไม่อนุมัติ",
+  rejected: "ยกเลิกแล้ว",
   cancelled: "ยกเลิกแล้ว",
   open: "รอรับเรื่อง",
   accepted: "รับเรื่องแล้ว",

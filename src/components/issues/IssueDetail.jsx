@@ -1015,7 +1015,8 @@ export function IssueDetail({ issue, user, users: usersProp, open, onClose, onCh
         centered
         onCancel={() => setConvertOpen(false)}
         footer={null}
-        width={680}
+        width={880}
+        classNames={{ content: "max-md:!w-[calc(100vw-32px)]" }}
         destroyOnHidden
       >
         {detail ? (
@@ -1029,8 +1030,9 @@ export function IssueDetail({ issue, user, users: usersProp, open, onClose, onCh
             initialValues={{
               name: detail.title,
               code: `PRJ-${String(detail.ticket_no || detail.id).replace(/\D/g, "").slice(-6)}`,
-              description: detail.description,
-              prd: `ที่มา: ${detail.ticket_no}\n\n${detail.description}`,
+              problem: detail.description || "",
+              extraDetails: detail.ticket_no ? `ที่มาจาก Ticket: ${detail.ticket_no}` : "",
+              mainRequirements: detail.description || "",
               ownerId: detail.assignee_id || user.id,
               memberIds: (detail.members || [])
                 .map((member) => member.user_id)

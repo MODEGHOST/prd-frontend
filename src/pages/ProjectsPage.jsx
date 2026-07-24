@@ -8,6 +8,7 @@ import { StatusTag } from "../components/ui/StatusTag";
 import { progressStrokeColor } from "../constants";
 import { projectsApi, usersApi } from "../services/api";
 import { hasPermission } from "../utils/access";
+import { summarizeProjectBrief } from "../utils/projectBrief";
 
 const PAGE_SIZE = 12;
 
@@ -138,7 +139,7 @@ export function ProjectsPage({ user }) {
                 </div>
                 <h3 className="m-0 text-lg font-semibold text-slate-800">{project.name}</h3>
                 <p className="mt-2 mb-4 line-clamp-2 min-h-10 text-sm text-slate-500">
-                  {project.description || "ยังไม่มีรายละเอียดโครงการ"}
+                  {summarizeProjectBrief(project) || "ยังไม่มีรายละเอียดโครงการ"}
                 </p>
                 <div className="mb-3 space-y-1.5 text-sm text-slate-500">
                   <div className="flex items-center gap-2">

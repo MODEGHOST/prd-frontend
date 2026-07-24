@@ -262,6 +262,8 @@ export function IssuesPage({ user }) {
         onCancel={closeCreateModal}
         footer={null}
         destroyOnHidden
+        width={880}
+        classNames={{ content: "max-md:!w-[calc(100vw-32px)]" }}
       >
         <IssueForm
           projects={projects}

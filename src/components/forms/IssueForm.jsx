@@ -31,10 +31,33 @@ export function IssueForm({
     }
   };
 
+  const descriptionField = (
+    <Form.Item name="description" label="รายละเอียด" rules={[{ required: true, message: "กรุณากรอกรายละเอียด" }]}>
+      <Input.TextArea
+        rows={showAttachments ? 5 : 6}
+        onPaste={(event) => {
+          const pasted = [...(event.clipboardData?.files || [])]
+            .filter((file) => file.type.startsWith("image/"));
+          if (!pasted.length) return;
+          setFiles((current) => [
+            ...current,
+            ...pasted.map((file) => ({
+              uid: `${Date.now()}-${file.name}-${file.size}`,
+              name: file.name || `pasted-image-${Date.now()}.png`,
+              status: "done",
+              originFileObj: file,
+            })),
+          ].slice(0, 15));
+        }}
+      />
+    </Form.Item>
+  );
+
   return (
     <Form
       form={form}
       layout="vertical"
+      className="[&_.ant-form-item]:mb-3"
       initialValues={{
         type: simple ? "support" : "bug",
         priority: "medium",
@@ -68,53 +91,47 @@ export function IssueForm({
           </Form.Item>
         ) : null}
       </div>
-      <Form.Item name="projectId" label="โครงการ">
-        <Select
-          allowClear
-          placeholder="ไม่ระบุ / เรื่องทั่วไป"
-          options={projects.map((project) => ({
-            value: project.id,
-            label: `${project.code} · ${project.name}`,
-          }))}
-        />
-      </Form.Item>
-      <Form.Item name="systemComponent" label="ระบบ / Component ที่เกี่ยวข้อง">
-        <Input maxLength={160} placeholder="เช่น Mobile App / Login" />
-      </Form.Item>
-      <Form.Item name="description" label="รายละเอียด" rules={[{ required: true, message: "กรุณากรอกรายละเอียด" }]}>
-        <Input.TextArea
-          rows={6}
-          onPaste={(event) => {
-            const pasted = [...(event.clipboardData?.files || [])]
-              .filter((file) => file.type.startsWith("image/"));
-            if (!pasted.length) return;
-            setFiles((current) => [
-              ...current,
-              ...pasted.map((file) => ({
-                uid: `${Date.now()}-${file.name}-${file.size}`,
-                name: file.name || `pasted-image-${Date.now()}.png`,
-                status: "done",
-                originFileObj: file,
-              })),
-            ].slice(0, 15));
-          }}
-        />
-      </Form.Item>
-      {showAttachments ? (
-        <Form.Item label="ไฟล์แนบ" extra="ลากไฟล์มาวาง หรือวางรูปจาก clipboard ในช่องรายละเอียด (สูงสุด 15 ไฟล์ · ไฟล์ละไม่เกิน 25MB)">
-          <Upload.Dragger
-            multiple
-            fileList={files}
-            beforeUpload={() => false}
-            onChange={({ fileList }) => setFiles(fileList.slice(0, 15))}
-            accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.txt"
-          >
-            <p className="ant-upload-drag-icon"><InboxOutlined /></p>
-            <p>ลากไฟล์มาวางหรือคลิกเพื่อเลือก</p>
-          </Upload.Dragger>
+      <div className="grid grid-cols-1 gap-0 md:grid-cols-2 md:gap-4">
+        <Form.Item name="projectId" label="โครงการ">
+          <Select
+            allowClear
+            placeholder="ไม่ระบุ / เรื่องทั่วไป"
+            options={projects.map((project) => ({
+              value: project.id,
+              label: `${project.code} · ${project.name}`,
+            }))}
+          />
         </Form.Item>
-      ) : null}
-      <Button type="primary" htmlType="submit" block loading={loading}>
+        <Form.Item name="systemComponent" label="ระบบ / Component ที่เกี่ยวข้อง">
+          <Input maxLength={160} placeholder="เช่น Mobile App / Login" />
+        </Form.Item>
+      </div>
+      {showAttachments ? (
+        <div className="grid grid-cols-1 gap-0 md:grid-cols-2 md:gap-4">
+          {descriptionField}
+          <Form.Item
+            label="ไฟล์แนบ"
+            extra="สูงสุด 15 ไฟล์ · ไฟล์ละไม่เกิน 25MB · วางรูปในช่องรายละเอียดได้"
+          >
+            <Upload.Dragger
+              multiple
+              className="md:[&_.ant-upload]:!px-3 md:[&_.ant-upload]:!py-3"
+              fileList={files}
+              beforeUpload={() => false}
+              onChange={({ fileList }) => setFiles(fileList.slice(0, 15))}
+              accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.txt"
+            >
+              <p className="ant-upload-drag-icon md:!mb-1">
+                <InboxOutlined className="md:!text-2xl" />
+              </p>
+              <p className="!mb-0 md:text-sm">ลากไฟล์มาวางหรือคลิกเพื่อเลือก</p>
+            </Upload.Dragger>
+          </Form.Item>
+        </div>
+      ) : (
+        descriptionField
+      )}
+      <Button type="primary" htmlType="submit" block loading={loading} className="mt-1">
         {submitLabel}
       </Button>
     </Form>

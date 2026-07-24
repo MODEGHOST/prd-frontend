@@ -213,7 +213,8 @@ export function ProjectsPage({ user }) {
         onCancel={() => setOpen(false)}
         footer={null}
         destroyOnHidden
-        width={640}
+        width={880}
+        classNames={{ content: "max-md:!w-[calc(100vw-32px)]" }}
       >
         <ProjectForm onSubmit={create} loading={saving} users={users} currentUserId={user.id} />
       </Modal>

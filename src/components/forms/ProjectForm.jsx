@@ -90,43 +90,50 @@ export function ProjectForm({
     <Form
       form={form}
       layout="vertical"
+      className="md:[&_.ant-form-item]:mb-3"
       initialValues={{
         memberIds: [],
         ...initialValues,
       }}
       onFinish={handleFinish}
     >
-      <Form.Item name="name" label="ชื่อโครงการ" rules={[{ required: true, message: "กรุณากรอกชื่อโครงการ" }]}>
-        <Input placeholder="เช่น ระบบแจ้งปัญหาภายใน" />
-      </Form.Item>
-      <Form.Item name="code" label="รหัสโครงการ" rules={[{ required: true, message: "กรุณากรอกรหัสโครงการ" }]}>
-        <Input placeholder="เช่น WEB-01" />
-      </Form.Item>
-      <Form.Item name="description" label="รายละเอียด">
-        <Input.TextArea rows={3} />
-      </Form.Item>
-      <Form.Item name="prd" label="Product Requirement (PRD)">
-        <Input.TextArea rows={5} />
-      </Form.Item>
-      <Form.Item name="range" label="ระยะเวลาโครงการ">
-        <AppRangePicker />
-      </Form.Item>
-      <Form.Item
-        name="ownerId"
-        label="เจ้าของหลัก (Main Owner)"
-        rules={[{ required: true, message: "กรุณาเลือกเจ้าของหลัก" }]}
-        extra="ผู้สร้างโครงการและเจ้าของหลักสามารถเป็นคนละคนได้"
-      >
-        <Select
-          showSearch
-          optionFilterProp="label"
-          placeholder="พิมพ์ชื่อเพื่อค้นหาเจ้าของหลัก"
-          options={ownerOptions}
-          filterOption={(input, option) =>
-            String(option?.label || "").toLowerCase().includes(input.trim().toLowerCase())
-          }
-        />
-      </Form.Item>
+      <div className="grid grid-cols-1 gap-0 md:grid-cols-2 md:gap-4">
+        <Form.Item name="name" label="ชื่อโครงการ" rules={[{ required: true, message: "กรุณากรอกชื่อโครงการ" }]}>
+          <Input placeholder="เช่น ระบบแจ้งปัญหาภายใน" />
+        </Form.Item>
+        <Form.Item name="code" label="รหัสโครงการ" rules={[{ required: true, message: "กรุณากรอกรหัสโครงการ" }]}>
+          <Input placeholder="เช่น WEB-01" />
+        </Form.Item>
+      </div>
+      <div className="grid grid-cols-1 gap-0 md:grid-cols-2 md:gap-4">
+        <Form.Item name="description" label="รายละเอียด">
+          <Input.TextArea rows={4} className="md:!min-h-[120px]" />
+        </Form.Item>
+        <Form.Item name="prd" label="Product Requirement (PRD)">
+          <Input.TextArea rows={4} className="md:!min-h-[120px]" />
+        </Form.Item>
+      </div>
+      <div className="grid grid-cols-1 gap-0 md:grid-cols-2 md:gap-4">
+        <Form.Item name="range" label="ระยะเวลาโครงการ">
+          <AppRangePicker className="w-full" />
+        </Form.Item>
+        <Form.Item
+          name="ownerId"
+          label="เจ้าของหลัก (Main Owner)"
+          rules={[{ required: true, message: "กรุณาเลือกเจ้าของหลัก" }]}
+          extra="ผู้สร้างโครงการและเจ้าของหลักสามารถเป็นคนละคนได้"
+        >
+          <Select
+            showSearch
+            optionFilterProp="label"
+            placeholder="พิมพ์ชื่อเพื่อค้นหาเจ้าของหลัก"
+            options={ownerOptions}
+            filterOption={(input, option) =>
+              String(option?.label || "").toLowerCase().includes(input.trim().toLowerCase())
+            }
+          />
+        </Form.Item>
+      </div>
       <Form.Item
         name="memberIds"
         label="สมาชิกทีม"
@@ -145,7 +152,7 @@ export function ProjectForm({
           }
         />
       </Form.Item>
-      <Button type="primary" htmlType="submit" block loading={loading}>
+      <Button type="primary" htmlType="submit" block loading={loading} className="mt-1">
         {submitLabel}
       </Button>
     </Form>
